@@ -1,0 +1,6 @@
+{
+  "name": "AI 健康陪跑教練",
+  "description": "具備高同理心與原子習慣設計的 AI 健康、體重與飲食管理陪跑教練",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
