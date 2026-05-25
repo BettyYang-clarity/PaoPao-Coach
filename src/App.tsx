@@ -268,7 +268,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="font-sans text-base font-bold tracking-tight text-brand-olive flex items-center gap-1.5">
-              Lumi Coach
+              PaoPao Coach
             </h1>
             <p className="text-[10px] text-brand-ash font-sans tracking-wide">
               原子健康微習慣 & 自主記錄健康夥伴
@@ -383,7 +383,7 @@ export default function App() {
                     {state.profile.customGoal ? `「${state.profile.customGoal}」` : "「歡迎點擊個人設定，開啟專屬您的無痛小習慣之旅 ☘️」"}
                   </h2>
                   <p className="text-[10px] text-brand-ash leading-relaxed">
-                    Lumi 教練：微小的習慣最牢固。不求一天登天，今天只要有前進 1%，您就是最大成功！
+                    PaoPao 教練：微小的習慣最牢固。不求一天登天，今天只要有前進 1%，您就是最大成功！
                   </p>
                 </div>
                 
@@ -401,7 +401,7 @@ export default function App() {
                       id="btn-coach-chat"
                       onClick={() => setShowChatModal(true)}
                       className="p-3 bg-brand-cream hover:bg-[#F3EFE6] border border-brand-border rounded-2xl flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer transition-all hover:-translate-y-0.5 shadow-3xs hover:shadow-2xs"
-                      title="Lumi 溫柔對話"
+                      title="PaoPao 溫柔對話"
                     >
                       <div className="w-8 h-8 rounded-full bg-[#EAE3D2] flex items-center justify-center text-brand-green">
                         <MessageSquare size={16} />
@@ -510,7 +510,7 @@ export default function App() {
             <div className="flex items-center justify-between pb-3 border-b border-brand-border-light flex-shrink-0">
               <div className="flex items-center gap-2">
                 <span className="text-lg">💬</span>
-                <h3 className="font-sans text-sm font-bold text-brand-text">與 Lumi Coach 溫柔漫談</h3>
+                <h3 className="font-sans text-sm font-bold text-brand-text">與 PaoPao Coach 溫柔漫談</h3>
               </div>
               <button
                 id="btn-close-chat"
@@ -536,7 +536,7 @@ export default function App() {
 
             {/* Footer */}
             <div className="pt-3 border-t border-brand-border-light text-center text-[9px] text-[#A39B8D] flex-shrink-0">
-              Lumi 教練為你提供無判決、極致包容、純溫暖的健康對話支持。
+              PaoPao 教練為你提供無判決、極致包容、純溫暖的健康對話支持。
             </div>
             
           </div>
@@ -545,7 +545,7 @@ export default function App() {
 
       {/* 3. Bottom Disclaimer / Safe Zone Footer */}
       <footer className="mt-12 py-6 px-8 flex flex-col sm:flex-row items-center justify-between border-t border-brand-border text-[9px] text-brand-ash font-medium tracking-widest uppercase bg-white/50 w-full gap-3">
-        <span>Lumi Coach — 原子修復與健康生活微習慣工具</span>
+        <span>PaoPao Coach — 原子修復與健康生活微習慣工具</span>
         <div className="flex flex-wrap justify-center gap-4 text-center sm:text-right">
           <span>非醫療處方 (No Prescription)</span>
           <span>不作疾病診斷 (No Diagnosis)</span>
