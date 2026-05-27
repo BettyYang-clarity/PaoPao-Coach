@@ -452,10 +452,10 @@ export default function App() {
                     <button
                       id="btn-goto-plan-summary"
                       onClick={() => setShowPlanModal(true)}
-                      className="p-3 bg-brand-cream hover:bg-[#F3EFE6] border border-brand-border rounded-2xl flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer transition-all hover:-translate-y-0.5 shadow-3xs hover:shadow-2xs animate-pulse"
+                      className="p-3 bg-brand-cream hover:bg-[#F3EFE6] border border-brand-border rounded-2xl flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer transition-all hover:-translate-y-0.5 shadow-3xs hover:shadow-2xs"
                       title="點擊查看原子健康計劃與戰略目標"
                     >
-                      <div className="w-8 h-8 rounded-full bg-emerald-50 text-brand-green flex items-center justify-center border border-emerald-350">
+                      <div className="w-8 h-8 rounded-full bg-[#EAE3D2] text-brand-green flex items-center justify-center">
                         <ClipboardList size={16} />
                       </div>
                       <span className="text-[10px] font-sans font-extrabold text-[#5C564A]">原子健康計劃 📋</span>
