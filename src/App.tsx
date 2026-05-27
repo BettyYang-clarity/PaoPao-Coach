@@ -250,7 +250,7 @@ export default function App() {
         {
           id: "m-welcome",
           sender: "bot",
-          text: "嗨！我是您的 PaoPao教練。很高興今天能夠陪伴你！❤️\n\n在這裡：\n👉 輸入「食物名稱」(如：地瓜/香蕉)，我會為您估算標準卡路里與三大營養配盤成分參考（不提供任何個人化臨床飲食治療方案，但為您送上哈佛餐盤公開指引比對）。\n👉 輸入「運動」(如：慢跑/重訓)，我會為您幫忙依代謝當量估算約略消耗大卡與運動推薦！\n👉 點擊「飲食拍照」就能自動分析與無痛習慣打卡。\n\n每天都有專屬原子小任務，一起輕鬆無痛培養一輩子的健康認同吧！🌱",
+          text: "嗨！我是 PaoPao教練，很高興陪伴你。❤️\n\n在這裡，你可以直接輸入食物或運動粗估熱量（供哈佛餐盤大眾指南對照），或點擊『飲食拍照』自動分析。每天都有專屬原子任務，我們一起無痛培養健康認同吧！🌱",
           timestamp: new Date().toISOString()
         }
       ]
@@ -437,7 +437,7 @@ export default function App() {
                     {state.profile.customGoal ? `「${state.profile.customGoal}」` : "「歡迎點擊個人設定，開啟專屬您的無痛小習慣之旅 ☘️」"}
                   </h2>
                   <p className="text-[10px] text-brand-ash leading-relaxed">
-                    PaoPao 教練：微小的習慣最牢固。不求一天登天，今天只要有前進 1%，您就是最大成功！
+                    PaoPao教練：微小習慣最牢固。今天只要前進 1% 就是最大成功！🌿
                   </p>
                 </div>
                 
@@ -595,7 +595,7 @@ export default function App() {
 
             {/* Footer */}
             <div className="pt-2.5 border-t border-brand-border-light text-center text-[9px] text-[#A39B8D] flex-shrink-0">
-              PaoPao教練為你提供無判決、極致包容、純溫暖的健康指引支持。
+              PaoPao教練提供大眾健康指引與溫和陪伴。
             </div>
             
           </div>
@@ -631,7 +631,7 @@ export default function App() {
 
             {/* Footer */}
             <div className="pt-2.5 border-t border-brand-border-light text-center text-[9px] text-[#A39B8D] flex-shrink-0">
-              微小習慣積沙成塔，今日進步 1% 就是最大成功！
+              微小習慣積沙成塔，今日進步 1% 就是成功！
             </div>
             
           </div>
