@@ -68,24 +68,7 @@ export const INITIAL_STATE: CoachState = {
       { habitId: "gh_drink_regular", level: 2 }
     ]
   },
-  records: [
-    {
-      id: "r-initial",
-      timestamp: new Date(Date.now() - 3600000 * 3).toISOString(), // 3 hours ago
-      type: "diet",
-      title: "活力燕麥鮮奶杯",
-      estimatedValue: 280,
-      unit: "大卡",
-      pointsEarned: 20,
-      nutritionRough: {
-        carbs: "豐富 (優質燕麥高纖)",
-        protein: "適中 (鮮奶好蛋白)",
-        fat: "適量",
-        veg: "較少"
-      },
-      coachFeedback: "哇！看到你選擇了高纖粗糧作為開局，對腸胃超級友善！誠實拍照記錄就是養成原子習慣最厲害的超級開端。不論熱量高低，每一口都是愛護自己的印記，給你加 20 分！"
-    }
-  ],
+  records: [],
   microTasks: [], // Will be filled below dynamically
   messages: [
     {
@@ -95,7 +78,7 @@ export const INITIAL_STATE: CoachState = {
       timestamp: new Date().toISOString()
     }
   ],
-  totalPoints: 20
+  totalPoints: 0
 };
 
 // Dynamically fill INITIAL_STATE microTasks so that they match profile settings perfectly
@@ -108,8 +91,13 @@ export function loadCoachState(): CoachState {
       const parsed = JSON.parse(data);
       // Ensure arrays and structures are loaded correctly
       if (parsed.profile && parsed.records && parsed.microTasks && parsed.messages) {
-        // Migration cleanup if old cache had pet
+        // Migration cleanup if old cache had pet or default initial mock diet logs
         if (parsed.pet) delete parsed.pet;
+        const initialIndex = parsed.records.findIndex((r: any) => r.id === "r-initial");
+        if (initialIndex !== -1) {
+          parsed.records.splice(initialIndex, 1);
+          parsed.totalPoints = Math.max(0, (parsed.totalPoints || 20) - 20);
+        }
 
         // Ensure default properties from INITIAL_STATE are merged in case they are missing in old cache
         parsed.profile = {

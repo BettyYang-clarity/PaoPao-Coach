@@ -620,44 +620,54 @@ export default function ProfileForm({ profile, onSave }: ProfileFormProps) {
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-1.5">
-                <button
-                  type="button"
-                  onClick={() => applyCaloriePreset(currentCalc.tdee)}
-                  className={`p-2 rounded-xl text-left border flex flex-col gap-0.5 transition-all cursor-pointer ${
-                    formData.dailyCalorieTarget === currentCalc.tdee
-                      ? "bg-brand-green/10 border-brand-green/60 text-brand-darkgreen font-semibold"
-                      : "bg-[#FAF9F6] border-brand-border-light hover:bg-brand-beige"
-                  }`}
-                >
-                  <span className="text-[9px] font-bold text-brand-olive">🧍 維持體重健康線</span>
-                  <span className="text-[11px] font-mono font-bold text-brand-text">{currentCalc.tdee} kcal</span>
-                </button>
+                {(() => {
+                  const safeFloor = formData.gender === "男生" ? 1500 : 1200;
+                  const mildLossTarget = Math.max(safeFloor, currentCalc.tdee - 300);
+                  const activeLossTarget = Math.max(safeFloor, currentCalc.tdee - 500);
 
-                <button
-                  type="button"
-                  onClick={() => applyCaloriePreset(Math.max(currentCalc.bmr, currentCalc.tdee - 300))}
-                  className={`p-2 rounded-xl text-left border flex flex-col gap-0.5 transition-all cursor-pointer ${
-                    formData.dailyCalorieTarget === Math.max(currentCalc.bmr, currentCalc.tdee - 300)
-                      ? "bg-brand-green/20 border-brand-green text-brand-darkgreen font-semibold"
-                      : "bg-[#FAF9F6] border-brand-border-light hover:bg-brand-beige"
-                  }`}
-                >
-                  <span className="text-[9px] font-bold text-brand-green">🏃 輕盈減脂 (無痛推薦)</span>
-                  <span className="text-[11px] font-mono font-bold text-brand-green">{Math.max(currentCalc.bmr, currentCalc.tdee - 300)} kcal</span>
-                </button>
+                  return (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => applyCaloriePreset(currentCalc.tdee)}
+                        className={`p-2 rounded-xl text-left border flex flex-col gap-0.5 transition-all cursor-pointer ${
+                          formData.dailyCalorieTarget === currentCalc.tdee
+                            ? "bg-brand-green/10 border-brand-green/60 text-brand-darkgreen font-semibold"
+                            : "bg-[#FAF9F6] border-brand-border-light hover:bg-brand-beige"
+                        }`}
+                      >
+                        <span className="text-[9px] font-bold text-brand-olive">🧍 維持體重健康線</span>
+                        <span className="text-[11px] font-mono font-bold text-brand-text">{currentCalc.tdee} kcal</span>
+                      </button>
 
-                <button
-                  type="button"
-                  onClick={() => applyCaloriePreset(Math.max(currentCalc.bmr, currentCalc.tdee - 500))}
-                  className={`p-2 rounded-xl text-left border flex flex-col gap-0.5 transition-all cursor-pointer ${
-                    formData.dailyCalorieTarget === Math.max(currentCalc.bmr, currentCalc.tdee - 500)
-                      ? "bg-red-500/10 border-red-300 text-red-800 font-semibold"
-                      : "bg-[#FAF9F6] border-brand-border-light hover:bg-brand-beige"
-                  }`}
-                >
-                  <span className="text-[9px] font-bold text-red-700">🔥 積極降脂規劃線</span>
-                  <span className="text-[11px] font-mono font-bold text-red-800">{Math.max(currentCalc.bmr, currentCalc.tdee - 500)} kcal</span>
-                </button>
+                      <button
+                        type="button"
+                        onClick={() => applyCaloriePreset(mildLossTarget)}
+                        className={`p-2 rounded-xl text-left border flex flex-col gap-0.5 transition-all cursor-pointer ${
+                          formData.dailyCalorieTarget === mildLossTarget
+                            ? "bg-brand-green/20 border-brand-green text-brand-darkgreen font-semibold"
+                            : "bg-[#FAF9F6] border-brand-border-light hover:bg-brand-beige"
+                        }`}
+                      >
+                        <span className="text-[9px] font-bold text-brand-green">🏃 輕盈減脂 (無痛推薦)</span>
+                        <span className="text-[11px] font-mono font-bold text-brand-green">{mildLossTarget} kcal</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => applyCaloriePreset(activeLossTarget)}
+                        className={`p-2 rounded-xl text-left border flex flex-col gap-0.5 transition-all cursor-pointer ${
+                          formData.dailyCalorieTarget === activeLossTarget
+                            ? "bg-red-500/10 border-red-300 text-red-800 font-semibold"
+                            : "bg-[#FAF9F6] border-brand-border-light hover:bg-brand-beige"
+                        }`}
+                      >
+                        <span className="text-[9px] font-bold text-red-700">🔥 積極降脂規劃線</span>
+                        <span className="text-[11px] font-mono font-bold text-red-800">{activeLossTarget} kcal</span>
+                      </button>
+                    </>
+                  );
+                })()}
               </div>
 
               <div className="mt-3.5 border-t border-brand-cream/80 pt-3 flex flex-col gap-2.5 bg-brand-cream/10 p-2.5 rounded-xl">

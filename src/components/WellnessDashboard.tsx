@@ -53,6 +53,19 @@ export default function WellnessDashboard({
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [isBadgesExpanded, setIsBadgesExpanded] = useState(false);
 
+  // Advisory stationary tips board
+  const PAOPAO_ADVICES = [
+    { text: "坐太久了嗎？現在起來把肩膀往後轉動 5 下、深深吐氣，感謝今天一直帶領你的身體喔。 ☕", tag: "微伸展", icon: "🛌" },
+    { text: "微習慣就像雪球。不求一夕登天，每日前進 1% 就是最佳成就！ 🌿", tag: "習慣認同", icon: "🌱" },
+    { text: "午餐或晚餐實踐一下蔬菜佔盤面一半的綠色搭配比例，這能非常高效地穩住脂肪堆積！ 🥦", tag: "哈佛餐盤", icon: "🥗" },
+    { text: "早上起暖胃溫開水大洗禮，下午時時溫熱水啜飲。每日喝足體重 x35ml 毫升水，是代謝潤滑密鑰！ 🥛", tag: "補水指標", icon: "🥛" },
+    { text: "今晚準備入睡前 30 分鐘，將手機充電器移到離床三步外的桌上。隔絕藍光，能大幅增加黃金深眠比例喔。 💤", tag: "高效舒眠", icon: "😴" },
+    { text: "今天壓力沉重嗎？站到鏡子前對自己笑一下，說聲：辛苦了，你做得很好。不完美的生活正是最棒的常規！ 🌸", tag: "心靈舒壓", icon: "❤️" },
+    { text: "太累太酸不想運動？沒關係，今天躺下把雙腿抬高貼牆 1 分鐘，大腦就會認證這是一次特級放鬆大成功！ 🧘", tag: "低磨損活動", icon: "🧘" },
+    { text: "精緻含糖飲料容易讓血糖狂飆與增加脂肪囤積。嘗試用無糖薄荷茶、無糖玄米茶或氣泡水溫和替代大腦的獎勵機制唷。 🥤", tag: "減脂良伴", icon: "🥤" }
+  ];
+  const [tipIndex, setTipIndex] = useState(() => Math.floor(Math.random() * PAOPAO_ADVICES.length));
+
   // Active logging tab inside the manual modal
   const [activeTab, setActiveTab] = useState<'diet' | 'water' | 'exercise' | 'sleep' | 'mood'>('diet');
   
@@ -1166,6 +1179,35 @@ export default function WellnessDashboard({
 
         </div>
 
+      </div>
+
+      {/* 2.4 Stationary High-EQ Micro Habits Inspiration Board */}
+      <div className="p-4 bg-brand-cream border border-brand-sand rounded-[24px] shadow-3xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 font-sans animate-fade-in">
+        <div className="flex items-start sm:items-center gap-3">
+          <span className="text-2xl p-1 bg-white border border-[#EAE3D2] rounded-xl shadow-4xs flex-shrink-0 animate-bounce duration-1000">
+            {PAOPAO_ADVICES[tipIndex].icon}
+          </span>
+          <div className="flex-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] font-sans font-black tracking-widest uppercase text-brand-green bg-emerald-50 border border-emerald-200/50 px-2.5 py-0.5 rounded-full select-none">
+                PaoPao 習慣加油站
+              </span>
+              <span className="text-[9px] font-sans font-extrabold text-[#7A7261] bg-[#FAF7F2] border border-[#EAE3D2] px-1.5 py-0.5 rounded-md select-none">
+                ✦ {PAOPAO_ADVICES[tipIndex].tag}
+              </span>
+            </div>
+            <p className="text-xs font-bold font-sans text-[#4A453A] leading-relaxed mt-1.5 pr-2.5">
+              {PAOPAO_ADVICES[tipIndex].text}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setTipIndex((prev) => (prev + 1) % PAOPAO_ADVICES.length)}
+          className="px-3 py-1.5 bg-white border border-[#EAE3D2] hover:bg-[#FDFCF7] text-brand-olive font-extrabold text-[10px] sm:text-xs rounded-xl shadow-4xs hover:shadow-3xs transition-all active:scale-[0.96] cursor-pointer self-stretch sm:self-auto text-center shrink-0"
+        >
+          💡 換一則方針
+        </button>
       </div>
 
       {/* 2.5 Collapsible Badge Showcase Area right after Diet Log Box */}

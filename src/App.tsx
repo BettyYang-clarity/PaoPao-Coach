@@ -14,31 +14,7 @@ import CoachChat from "./components/CoachChat";
 import HealthPlanSummary from "./components/HealthPlanSummary";
 import TipCard from "./components/TipCard";
 import { motion, AnimatePresence } from "motion/react";
-import { Sparkles, Bell, BellOff, MessageSquare, X, Check, Settings, ClipboardList } from "lucide-react";
-
-// Helper to split long notifications into compact sequential pages of max ~45 characters or by sentence bounds
-function getNotificationPages(text: string | null): string[] {
-  if (!text) return [];
-  const clean = text.trim();
-  const sentences = clean.split(/(?<=[。！？；,，、])/g).filter(s => s.trim().length > 0);
-  
-  const pages: string[] = [];
-  let buffer = "";
-  for (const sentence of sentences) {
-    if ((buffer + sentence).length > 45) {
-      if (buffer) pages.push(buffer);
-      buffer = sentence;
-    } else {
-      buffer += sentence;
-    }
-  }
-  if (buffer) pages.push(buffer);
-  
-  if (pages.length === 0 && clean) {
-    pages.push(clean);
-  }
-  return pages;
-}
+import { Sparkles, MessageSquare, X, Check, Settings, ClipboardList } from "lucide-react";
 
 // Helper to calculate habit streaks and cumulative days
 function getStreakInfo(records: WellnessRecord[], microTasks: MicroTask[]) {
@@ -111,12 +87,6 @@ export default function App() {
   // Master state
   const [state, setState] = useState<CoachState>(() => loadCoachState());
 
-  // Interactive notifications states
-  const [bellEnabled, setBellEnabled] = useState(true);
-  const [coachNotification, setCoachNotification] = useState<string | null>(null);
-  const [lastReminderDate, setLastReminderDate] = useState<string>("");
-  const [notifPage, setNotifPage] = useState(0);
-
   // Top navigation tabs
   const [currentTab, setCurrentTab] = useState<'plan' | 'record' | 'settings'>('plan');
 
@@ -128,101 +98,10 @@ export default function App() {
   const unlockedBadgesCount = badges.filter(b => b.isUnlocked).length;
   const { consecutiveStreak, totalActiveDays } = getStreakInfo(state.records, state.microTasks);
 
-  // Reset page when notification changes
-  useEffect(() => {
-    setNotifPage(0);
-  }, [coachNotification]);
-
   // Auto-sync state edits to localStorage
   useEffect(() => {
     saveCoachState(state);
   }, [state]);
-
-  // Periodic simulated health reminders (Notification simulation)
-  useEffect(() => {
-    if (!bellEnabled) return;
-
-    const selectedGoals = state.profile.selectedGoals || [];
-    let reminders: string[] = [
-      "🔔 【教練溫暖提醒】：坐了很久了嗎？現在起來把肩膀往後轉動 5 下、深深吐氣，感謝今天一直帶領你的身體喔。 ☕",
-      "🔔 【小習慣大能量】：微習慣就像雪球。不求一夕登天，每日前進 1% 就是最佳成就！ 🌿"
-    ];
-
-    selectedGoals.forEach((goalId) => {
-      switch (goalId) {
-        case "weight_loss":
-          reminders.push(`🔔 【減肥計劃提拉】：今天保持正向心態，把大卡指標守護在 ${state.profile.dailyCalorieTarget} kcal。記得晚飯 8 分飽，給內臟夜間自噬休息的空檔喔！ ⚖️`);
-          reminders.push("🔔 【哈佛餐盤原則】：午餐或晚餐實踐一下蔬菜佔盤面一半（2等份）的綠色搭配比例，這能非常高效地穩住脂肪堆積！ 🥦");
-          break;
-        case "better_sleep":
-          reminders.push("🔔 【深眠環境保護】：今晚睡前 30 分鐘，把手機放遠一點，改看一看書。移開藍光干擾，今夜慢波深睡會極限延長！ 💤");
-          break;
-        case "mental_wellness":
-          reminders.push("🔔 【心理復原大師】：今天壓力大？對鏡中自己說聲「辛苦了，你很棒」。不追求完美，今天誠實記錄生活，就是特級大成功！ 🌸");
-          break;
-        case "general_health":
-          reminders.push("🔔 【健康規律補水】：早上起暖胃溫開水大洗禮，下午時時啜飲。每日喝足體重 x35ml 毫升水，是代謝順暢運行的秘密！ 🥛");
-          break;
-      }
-    });
-
-    if (reminders.length <= 2) {
-      reminders = [
-        "🔔 【教練溫暖提醒】：坐了很久了嗎？現在起來把肩膀往後轉動 5 下、深深吐氣，感謝今天一直帶領你的身體喔。 ☕",
-        "🔔 【水分加分號角】：下午三點了！去倒一杯溫暖的白開水慢慢喝，滋潤你疲憊的大腦跟皮膚吧。 🥛",
-        "🔔 【原子超微伸展】：太累不想動？沒關係，躺下把雙腿抬高貼牆 1 分鐘，這就是最佳的修復大成功。 🛌"
-      ];
-    }
-
-    // Trigger an initial tip after a small delay
-    const initialTimer = setTimeout(() => {
-      setCoachNotification(reminders[Math.floor(Math.random() * reminders.length)]);
-    }, 12000);
-
-    // Dynamic timer
-    const interval = setInterval(() => {
-      const selected = reminders[Math.floor(Math.random() * reminders.length)];
-      setCoachNotification(selected);
-    }, 45000); // remind every 45s so the preview user sees it working!
-
-    return () => {
-      clearTimeout(initialTimer);
-      clearInterval(interval);
-    };
-  }, [bellEnabled, state.profile.selectedGoals, state.profile.dailyCalorieTarget]);
-
-  // Precise scheduled daily health check reminder
-  useEffect(() => {
-    if (state.profile.dailyReminderEnabled === false) return;
-
-    const checkInterval = setInterval(() => {
-      const now = new Date();
-      const currentHHMM = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-      const currentDateString = now.toDateString(); // e.g. "Wed May 27 2026"
-      const targetTime = state.profile.dailyReminderTime || "09:00";
-
-      if (currentHHMM === targetTime && lastReminderDate !== currentDateString) {
-        setLastReminderDate(currentDateString);
-        
-        const notifyText = `🔔 【原子定時打卡提醒】：您的個人精準原子習慣提醒時間 (${targetTime}) 到了！隨手登錄一杯起點水、拍個照，或花 15 秒告訴 PaoPao 輕巧小習慣今天如何，一起累積複利大健康吧！🌱`;
-        setCoachNotification(notifyText);
-
-        // Standard HTML5 Web Notification Integration
-        if ("Notification" in window && Notification.permission === "granted") {
-          try {
-            new Notification("PaoPao 原子健康教練", {
-              body: `提醒主人：微小習慣積沙成塔，您預定的健康習慣打卡時間點 (${targetTime}) 到了唷！🌿`,
-              icon: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=128&q=80"
-            });
-          } catch (e) {
-            console.error("Native notification instantiation bypassed in active window:", e);
-          }
-        }
-      }
-    }, 15000); // Poll and cross-match matching targets precisely every 15 seconds
-
-    return () => clearInterval(checkInterval);
-  }, [state.profile.dailyReminderEnabled, state.profile.dailyReminderTime, lastReminderDate]);
 
   // Handle toggling of micro-tasks
   const handleToggleTask = (id: string) => {
@@ -397,16 +276,6 @@ export default function App() {
     }
   };
 
-  const forceRemindMe = () => {
-    const alerts = [
-      "🔔 【水分元氣口哨】：倒杯溫水慢慢地喝完，讓乾涸的體魄享受大自然的灌溉吧！加油！🥛",
-      "🔔 【無痛微拉筋】：現在雙手臂向上伸直，十指用力交握、維持 15 秒，你又朝解鎖徽章邁進了一大步！🧘",
-      "🔔 【大腦減壓碎碎念】：不完美真的沒關係。就算是吃炸雞，它也幫今天疲憊的你補充滿滿的多巴胺！我們完全不扣分，今天記錄了就是大成功！✨",
-      "🔔 【舒甜微小好意】：今晚睡前一小時，把手機放到手碰不著的地方，幫明天清亮的大腦存點定力基礎。😴"
-    ];
-    setCoachNotification(alerts[Math.floor(Math.random() * alerts.length)]);
-  };
-
   return (
     <div className="min-h-screen bg-brand-cream text-brand-text font-sans selection:bg-brand-beige pb-12 flex flex-col justify-between">
       
@@ -436,22 +305,6 @@ export default function App() {
               <span className="text-[#7A7261]">累積 <span className="font-mono font-black text-[11px] sm:text-xs text-brand-green">{totalActiveDays}</span> 天</span>
             </span>
           </div>
-
-          {/* Core Alert Toggle/Action Bell button */}
-          <button
-            onClick={() => {
-              setBellEnabled(!bellEnabled);
-              if (!bellEnabled) forceRemindMe();
-            }}
-            className={`p-2 rounded-xl border transition-all cursor-pointer flex-shrink-0 ${
-              bellEnabled 
-                ? "bg-brand-beige border-brand-sand text-brand-green shadow-xs hover:bg-white" 
-                : "bg-white/50 border-brand-border text-brand-ash hover:text-brand-muted"
-            }`}
-            title={bellEnabled ? "教練叮嚀已開啟 (每 45 秒發送)" : "開啟定時叮嚀"}
-          >
-            {bellEnabled ? <Bell size={14} className="animate-swing" /> : <BellOff size={14} />}
-          </button>
         </div>
       </header>
 
@@ -732,54 +585,6 @@ export default function App() {
           </div>
         </div>
       )}
-
-      {/* Dynamic Floating Coach Notification Toast */}
-      <AnimatePresence>
-        {coachNotification && (
-          <motion.div
-            id="floating-coach-toast"
-            initial={{ opacity: 0, y: 50, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ type: "spring", damping: 25, stiffness: 350 }}
-            className="fixed bottom-6 right-6 z-40 max-w-xs sm:max-w-md bg-white border-2 border-emerald-500/30 rounded-[28px] p-5 shadow-2xl flex flex-col gap-3 font-sans text-left"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-base">🧠</span>
-                <span className="text-[10px] font-sans font-black tracking-widest uppercase text-brand-green bg-emerald-50 border border-emerald-200/50 px-2.5 py-0.5 rounded-full">
-                  PaoPao 原氣加油站
-                </span>
-              </div>
-              <button
-                id="btn-close-toast"
-                onClick={() => setCoachNotification(null)}
-                className="p-1 hover:bg-brand-cream border border-transparent hover:border-[#EAE3D2] rounded-lg transition-all cursor-pointer text-brand-ash hover:text-brand-muted shrink-0"
-              >
-                <X size={12} />
-              </button>
-            </div>
-            
-            <p className="text-xs font-bold font-sans text-[#4A453A] leading-relaxed">
-              {coachNotification}
-            </p>
-
-            <div className="flex items-center justify-between border-t border-[#FAF7F2] pt-2 text-[9px] text-[#A39B8D]">
-              <span>每天進步 1% 就是大成功</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setCoachNotification(null);
-                  setShowChatModal(true);
-                }}
-                className="px-3 py-1 bg-brand-green hover:bg-brand-darkgreen text-white font-bold rounded-lg text-[9px] cursor-pointer shadow-4xs transition-all hover:scale-102 flex items-center gap-1 active:scale-98"
-              >
-                立即打卡 ✍️
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* 3. Bottom Disclaimer / Safe Zone Footer */}
       <footer className="mt-12 py-5 px-6 flex flex-col sm:flex-row items-center justify-between border-t border-brand-border text-[9.5px] text-brand-ash font-bold tracking-wider bg-white/50 w-full gap-2">
