@@ -17,7 +17,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Sparkles, MessageSquare, X, Check, Settings, ClipboardList } from "lucide-react";
 
 // Helper to calculate habit streaks and cumulative days
-function getStreakInfo(records: WellnessRecord[], microTasks: MicroTask[]) {
+function getStreakInfo(records: WellnessRecord[], microTasks: MicroTask[], isExcused: boolean = false) {
   const activeDatesSet = new Set<string>();
 
   // 1. Collect dates from records (format: YYYY-MM-DD)
@@ -33,6 +33,15 @@ function getStreakInfo(records: WellnessRecord[], microTasks: MicroTask[]) {
       activeDatesSet.add(t.completedAt.slice(0, 10));
     }
   });
+
+  // 3. Inject today into active dates set if today is excused
+  if (isExcused) {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    activeDatesSet.add(`${y}-${m}-${d}`);
+  }
 
   const totalActiveDays = activeDatesSet.size;
 
@@ -96,7 +105,7 @@ export default function App() {
 
   const badges = evaluateBadges(state.records, state.profile.dailyCalorieTarget || 1600, state.microTasks, state.totalPoints);
   const unlockedBadgesCount = badges.filter(b => b.isUnlocked).length;
-  const { consecutiveStreak, totalActiveDays } = getStreakInfo(state.records, state.microTasks);
+  const { consecutiveStreak, totalActiveDays } = getStreakInfo(state.records, state.microTasks, state.isExcused);
 
   // Auto-sync state edits to localStorage
   useEffect(() => {
@@ -121,7 +130,8 @@ export default function App() {
         }));
         return {
           ...prev,
-          microTasks: resetTasks
+          microTasks: resetTasks,
+          isExcused: false // 跨日清空特赦狀態
         };
       });
       localStorage.setItem("pao_pao_last_reset_date", todayStr);
@@ -147,6 +157,14 @@ export default function App() {
         totalPoints: prev.totalPoints + pointsDiff
       };
     });
+  };
+
+  // Toggle today's excuse shield status
+  const handleToggleExcuse = () => {
+    setState((prev) => ({
+      ...prev,
+      isExcused: !prev.isExcused
+    }));
   };
 
   // Add custom micro-task
@@ -475,6 +493,8 @@ export default function App() {
                 <HabitBoard
                   tasks={state.microTasks}
                   profile={state.profile}
+                  isExcused={state.isExcused}
+                  onToggleExcuse={handleToggleExcuse}
                   onToggleTask={handleToggleTask}
                   onAddTask={handleAddTask}
                   onRegenerateTasks={handleRegenerateTasks}

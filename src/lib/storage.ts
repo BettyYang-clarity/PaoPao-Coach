@@ -78,7 +78,8 @@ export const INITIAL_STATE: CoachState = {
       timestamp: new Date().toISOString()
     }
   ],
-  totalPoints: 0
+  totalPoints: 0,
+  isExcused: false
 };
 
 // Dynamically fill INITIAL_STATE microTasks so that they match profile settings perfectly
@@ -91,6 +92,7 @@ export function loadCoachState(): CoachState {
       const parsed = JSON.parse(data);
       // Ensure arrays and structures are loaded correctly
       if (parsed.profile && parsed.records && parsed.microTasks && parsed.messages) {
+        parsed.isExcused = parsed.isExcused ?? false;
         // Migration cleanup if old cache had pet or default initial mock diet logs
         if (parsed.pet) delete parsed.pet;
         const initialIndex = parsed.records.findIndex((r: any) => r.id === "r-initial");

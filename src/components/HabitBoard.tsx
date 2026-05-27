@@ -27,6 +27,8 @@ import {
 interface HabitBoardProps {
   tasks: MicroTask[];
   profile: UserProfile;
+  isExcused?: boolean;
+  onToggleExcuse?: () => void;
   onToggleTask: (id: string) => void;
   onAddTask: (task: MicroTask) => void;
   onRegenerateTasks: (newTasks: MicroTask[]) => void;
@@ -35,6 +37,8 @@ interface HabitBoardProps {
 export default function HabitBoard({
   tasks,
   profile,
+  isExcused = false,
+  onToggleExcuse,
   onToggleTask,
   onAddTask,
   onRegenerateTasks
@@ -255,6 +259,21 @@ export default function HabitBoard({
     return `🎉 恭喜你！今日原子任務全數達成 (${completedTasks}/${totalTasks})！你用最低磨損的堅持完成了對自己的承諾，你是最棒的原子習慣大師！❤️`;
   };
 
+  const getIdentityAffirmation = (category: string) => {
+    switch (category) {
+      case "diet":
+        return "我實踐了健康餐盤，我是一個溫柔愛護身體的人 🥗";
+      case "water":
+        return "我成功灌溉了細胞，我是一個重視水分與新陳代謝的人 🥛";
+      case "exercise":
+        return "我為健康帳戶儲蓄了動能，我是一個享受身體活力的人 🏃‍♀️";
+      case "sleep":
+        return "我準備享受慢波精修，我是一個重視大腦深度修復的人 😴";
+      default:
+        return "我誠實面對了自我，我是一個擁有強大內在韌性的人 🌸";
+    }
+  };
+
   return (
     <div id="habit-panel" className="flex flex-col gap-5 text-left font-sans">
       {/* Title & Actions bar (Slicker and spacious) */}
@@ -264,6 +283,21 @@ export default function HabitBoard({
           <span className="text-xs font-bold text-brand-muted uppercase tracking-wider">每日自主小清單</span>
         </div>
         <div className="flex items-center gap-3">
+          {onToggleExcuse && (
+            <button
+              type="button"
+              onClick={onToggleExcuse}
+              className={`text-xs font-sans font-semibold flex items-center gap-1 cursor-pointer transition-all active:scale-95 px-2.5 py-0.5 rounded-lg border ${
+                isExcused
+                  ? "bg-amber-100/70 border-amber-350 text-amber-800 shadow-4xs"
+                  : "bg-brand-cream border-brand-border text-brand-muted hover:text-brand-green"
+              }`}
+              title="開啟/關閉今日特赦盾牌保護"
+            >
+              <span>{isExcused ? "🛡️ 已特赦" : "🛡️ 今日特赦"}</span>
+            </button>
+          )}
+          <span className="text-brand-border-light select-none">|</span>
           <button
             type="button"
             onClick={() => setShowCustomForm(!showCustomForm)}
@@ -288,22 +322,35 @@ export default function HabitBoard({
 
       {/* 頂部任務完成進度及動態同理心鼓勵詞橫幅 */}
       {totalTasks > 0 && (
-        <div className="bg-[#FAF7F2] border border-brand-border/60 rounded-2xl p-4 flex flex-col gap-2.5 shadow-4xs transition-all">
+        <div className={`border rounded-2xl p-4 flex flex-col gap-2.5 shadow-4xs transition-all duration-300 ${
+          isExcused 
+            ? "bg-[#FCF9F2] border-amber-300 text-amber-900" 
+            : "bg-[#FAF7F2] border-brand-border/60 text-[#5C564A]"
+        }`}>
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold text-[#5C564A] flex items-center gap-1.5">
-              <Award size={13} className="text-brand-green animate-pulse" />
+            <span className="text-[10px] font-extrabold flex items-center gap-1.5">
+              <Award size={13} className={isExcused ? "text-amber-600 animate-bounce" : "text-brand-green animate-pulse"} />
               今日原子任務進度：{completedTasks} / {totalTasks} ({completionPercentage}%)
             </span>
+            {isExcused && (
+              <span className="text-[8.5px] font-sans font-bold px-1.5 py-0.5 bg-amber-100 text-amber-800 border border-amber-250 rounded-md leading-none animate-pulse">
+                🛡️ 特赦防護中
+              </span>
+            )}
           </div>
           {/* 高質感進度條 */}
           <div className="w-full bg-[#EAE3D2]/55 h-2 rounded-full overflow-hidden">
             <div
-              className="h-full bg-brand-green rounded-full transition-all duration-500 ease-out"
+              className={`h-full rounded-full transition-all duration-500 ease-out ${
+                isExcused ? "bg-amber-500" : "bg-brand-green"
+              }`}
               style={{ width: `${completionPercentage}%` }}
             />
           </div>
-          <p className="text-[10.5px] leading-relaxed text-[#5C564A] font-medium font-sans mt-0.5">
-            {getEncouragementMessage()}
+          <p className="text-[10.5px] leading-relaxed font-medium font-sans mt-0.5">
+            {isExcused 
+              ? "🛡️ 今日原子特赦保護已啟動！教練溫柔拍肩：妥協與休息也是健康的一部分。今天好好放鬆充電，明早你的連續打卡 streak 依然會受到完美保護喔！❤️"
+              : getEncouragementMessage()}
           </p>
         </div>
       )}
@@ -422,6 +469,11 @@ export default function HabitBoard({
                       <p className={`font-sans text-[11.5px] leading-relaxed mt-0.5 ${isCompleted ? 'text-brand-ash/60 line-through font-normal' : 'text-brand-text font-bold'}`}>
                         👉 行動目標：{cleanText}
                       </p>
+                      {isCompleted && (
+                        <p className="font-sans text-[10px] text-brand-green/85 font-extrabold italic mt-1.5 animate-fade-in flex items-center gap-1 select-none">
+                          🧘 認同定錨：{getIdentityAffirmation(task.category)}
+                        </p>
+                      )}
                     </div>
                   </div>
 

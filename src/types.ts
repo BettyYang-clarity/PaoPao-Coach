@@ -69,6 +69,7 @@ export interface CoachState {
   microTasks: MicroTask[];
   messages: ChatMessage[];
   totalPoints: number;
+  isExcused?: boolean;
 }
 
 export const WATER_MICRO_TASK_POOL: string[] = [
