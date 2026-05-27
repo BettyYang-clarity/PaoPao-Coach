@@ -518,7 +518,6 @@ export default function App() {
                 id="btn-close-chat"
                 onClick={() => {
                   setShowChatModal(false);
-                  handleClearMessages();
                 }}
                 className="p-1.5 hover:bg-brand-cream border border-transparent hover:border-brand-border rounded-xl transition-all cursor-pointer text-brand-ash hover:text-brand-muted"
               >
@@ -536,7 +535,6 @@ export default function App() {
                 onImageAnalysisResult={(rec) => {
                   handleAddRecord(rec);
                   setShowChatModal(false);
-                  handleClearMessages(); // seamless auto refresh back to welcome state
                 }}
               />
             </div>
@@ -595,6 +593,33 @@ export default function App() {
           <span>行為科學設計</span>
         </div>
       </footer>
+
+      {/* Persistent floating action button (FAB) for Coach PaoPao */}
+      <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2">
+        <AnimatePresence>
+          {!showChatModal && (
+            <motion.button
+              id="fab-pao-coach"
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowChatModal(true)}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-5 py-3 shadow-xl hover:shadow-2xl flex items-center gap-2 cursor-pointer border border-emerald-500/20 group relative"
+              title="隨時找 PaoPao 教練聊聊"
+            >
+              {/* Notification pulse highlight */}
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+              </span>
+              <span className="text-sm">💬</span>
+              <span className="text-xs font-sans font-bold tracking-wide">PaoPao教練在線</span>
+            </motion.button>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
