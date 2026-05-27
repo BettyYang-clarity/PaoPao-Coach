@@ -20,25 +20,21 @@ const PORT = 3000;
 app.use(express.json({ limit: "15mb" }));
 app.use(express.urlencoded({ extended: true, limit: "15mb" }));
 
-// Lazy initializer for Gemini client to prevent crash on startup if key is missing
-let aiClient: GoogleGenAI | null = null;
+// Dynamic initializer for Gemini client to prevent caching a missing key and support on-the-fly key updates
 function getGeminiClient(): GoogleGenAI {
-  if (!aiClient) {
-    const rawKey = process.env.GEMINI_API_KEY;
-    const key = rawKey ? rawKey.trim().replace(/^['"]|['"]$/g, '') : '';
-    if (!key) {
-      console.warn("⚠️ Warning: GEMINI_API_KEY is not set. The coach features will run in mock mode.");
-    }
-    aiClient = new GoogleGenAI({
-      apiKey: key || "MOCK_KEY",
-      httpOptions: {
-        headers: {
-          "User-Agent": "aistudio-build",
-        },
-      },
-    });
+  const rawKey = process.env.GEMINI_API_KEY;
+  const key = rawKey ? rawKey.trim().replace(/^['"]|['"]$/g, '') : '';
+  if (!key) {
+    console.warn("⚠️ Warning: GEMINI_API_KEY is not set. The coach features will run in mock mode.");
   }
-  return aiClient;
+  return new GoogleGenAI({
+    apiKey: key || "MOCK_KEY",
+    httpOptions: {
+      headers: {
+        "User-Agent": "aistudio-build",
+      },
+    },
+  });
 }
 
 // Convert base64 data to inline part for Gemini
@@ -113,97 +109,37 @@ const fallbackFoods: Record<string, { kcal: number; protein: string; carbs: stri
     protein: "35g",
     carbs: "0g",
     fat: "28g",
-    desc: "牛排富含豐富的優質蛋白質與鐵質，對增肌與造血很有幫助，儘量選擇少油煎或烤的方式。"
-  },
-  蘋果: {
-    kcal: 60,
-    protein: "0.3g",
-    carbs: "15g",
-    fat: "0.2g",
-    desc: "一天一蘋果，醫生遠離我！蘋果富含果膠與維生素C，能增強飽足感並幫助腸道健康。"
-  },
-  大乾麵: {
-    kcal: 600,
-    protein: "12g",
-    carbs: "80g",
-    fat: "24g",
-    desc: "乾麵常伴隨較高油脂與鈉量的醬汁，可以多請店家少油、多加一份燙青菜以補充纖維質！"
-  },
-  雞排: {
-    kcal: 650,
-    protein: "30g",
-    carbs: "40g",
-    fat: "35g",
-    desc: "炸雞排的裹粉與高溫油炸會大幅增加油脂，建議去皮食用，或者偶爾享用就好囉！"
+    desc: "牛排富含豐富的優質蛋白質與鐵質，對肌肉修復及體力維持有絕佳效果，記得搭配豐富蔬菜喔！"
   }
 };
 
-const fallbackExercises: Record<string, { met: number; desc: string }> = {
-  跑: {
-    met: 8.0,
-    desc: "慢跑能有效提升心肺耐力與全身新陳代謝，配合國健署指引，維持中度活動強度，微汗即可！"
-  },
-  羽球: {
-    met: 5.5,
-    desc: "羽毛球是絕佳的全身性間歇運動，考驗敏捷度與心肺，記得多做熱身，保護膝蓋與手腕！"
-  },
-  重訓: {
-    met: 6.0,
-    desc: "阻力訓練與重訓能增加肌肉量、提升基礎代謝率，是原子習慣中持久燃脂與強健骨骼的基石。"
-  },
-  散步: {
-    met: 3.5,
-    desc: "步行是最棒且磨損極低的日常習慣。哪怕每天只走 10 分鐘，都能有效啟動心血管活力！"
-  },
-  騎車: {
-    met: 4.0,
-    desc: "騎自行車是友善關節的低衝擊有氧運動，也是低阻力融入日常活動通勤的極佳微習慣。"
-  },
-  瑜伽: {
-    met: 2.5,
-    desc: "瑜伽能夠拉伸肌肉、提升柔軟度並釋放身心壓力，配合深長呼吸，幫助重新找回身體掌控權。"
-  }
+const fallbackExercises = {
+  慢跑: { met: 8.0, desc: "慢跑是極佳的心肺訓練，能大幅提升心肺耐力與熱量消耗。記得維持平穩呼吸，步伐保持輕盈喔！" },
+  散步: { met: 3.0, desc: "散步是低磨損的極佳日常活動，能有效促進餐後血糖平穩與放鬆心情。每天多走 500 步就是很好的累積！" },
+  瑜伽: { met: 2.5, desc: "瑜伽著重於呼吸與身體的覺察，能伸展關節、舒緩情緒。" },
+  游泳: { met: 7.0, desc: "游泳是全身性的無衝擊有氧運動，對關節非常友善，能同時強化與鍛鍊肌肉群。" },
+  重訓: { met: 5.0, desc: "阻力訓練（重訓）是提升肌肉量與基礎代謝的關鍵。" },
+  騎單車: { met: 6.0, desc: "騎單車能鍛鍊下肢大肌群，也是非常安靜的有氧活動。" }
 };
 
-// 1. Unified High-EQ Chatbot Endpoint with PaoPao branding
+// 1. High-EQ AI Coach Chat Endpoint
 app.post("/api/coach/chat", async (req, res) => {
   try {
     const { message, history, profile } = req.body;
-    const lowerMessage = (message || "").toLowerCase();
-
-    // Dynamically retrieve profile settings
-    let goalStr = "建立完美的原子習慣";
-    if (profile?.customGoal) {
-      goalStr = `「${profile.customGoal}」`;
-    }
-
-    let guidelineText = "";
-    if (profile?.selectedGuidelines && profile.selectedGuidelines.length > 0) {
-      const names = profile.selectedGuidelines.map((item: any) => {
-        if (!item) return "";
-        if (typeof item === "string") {
-          const translation: Record<string, string> = {
-            diet_whole: "多吃原型食物",
-            water_more: "充足水分補給",
-            rest_sleep: "高品質睡眠與休息",
-            exercise_cardio: "規律有氧運動",
-            strength_train: "漸進式肌力訓練",
-            mindful_breathing: "每日正念深呼吸",
-            weight_record: "誠實記錄體重"
-          };
-          return translation[item] || item;
-        }
-        return item.habitName || item.name || JSON.stringify(item);
-      }).filter(Boolean);
-
-      if (names.length > 0) {
-        guidelineText = `，積極守護承諾微習慣方針【${names.join("、")}】`;
-      }
-    }
+    const lowerMessage = message?.toLowerCase() || "";
+    const goalStr = profile?.customGoal || "維持健康生活方式";
+    const guidelineText = profile?.selectedHabits && profile.selectedHabits.length > 0
+      ? `，並為您精選了 ${profile.selectedHabits.length} 個微原子習慣`
+      : "";
 
     const rawApiKey = process.env.GEMINI_API_KEY;
-    const apiKey = rawApiKey ? rawApiKey.trim().replace(/^['"]|['"]$/g, '') : '';
+    const apiKey = rawApiKey ? rawApiKey.trim().replace(/^['"]/g, '').replace(/['"]$/g, '') : '';
     const isKeyPresent = apiKey && apiKey !== "MY_GEMINI_API_KEY" && apiKey !== "MOCK_KEY" && apiKey !== "undefined" && apiKey !== "";
+
+    let systemWarning = "";
+    if (!isKeyPresent) {
+      systemWarning = "⚠️ 【系統診斷：尚未設定您的 GEMINI_API_KEY 金鑰。請點擊右上角「Settings > Secrets」即可解開真實智慧 PaoPao 陪跑教練！暫時為您啟用高品質原子習慣模擬對話。】\n\n";
+    }
 
     if (isKeyPresent) {
       try {
@@ -212,13 +148,13 @@ app.post("/api/coach/chat", async (req, res) => {
 ${JSON.stringify(profile)}
 
 【歷史對話紀錄】
-${history && Array.isArray(history) ? history.map((m: any) => `${m.sender === "bot" ? "教練(PaoPao)" : "使用者"}: ${m.text}`).join("\n") : "無"}
+${history && Array.isArray(history) ? history.map((m) => `${m.sender === "bot" ? "教練(PaoPao)" : "使用者"}: ${m.text}`).join("\n") : "無"}
 
 【最新使用者訊息】
 ${message}`;
 
         const response = await ai.models.generateContent({
-          model: "gemini-flash-latest",
+          model: "gemini-3.5-flash",
           contents: prompt,
           config: {
             systemInstruction: COACH_SYSTEM_PROMPT
@@ -228,8 +164,9 @@ ${message}`;
         if (response && response.text) {
           return res.json({ reply: response.text });
         }
-      } catch (realAiError: any) {
+      } catch (realAiError) {
         console.error("⚠️ Real Gemini API Call failed, falling back to High-EQ mock engine:", realAiError);
+        systemWarning = `⚠️ 【系統診斷：Gemini 連線失敗（錯誤資訊：${realAiError.message || realAiError}）。請檢查 Settings -> Secrets 面板金鑰效期或輸入格式。暫時啟用高品質原子習慣模擬對話。】\n\n`;
       }
     }
 
@@ -239,7 +176,7 @@ ${message}`;
     if (foodKey) {
       const item = fallbackFoods[foodKey];
       return res.json({
-        reply: `【PaoPao教練溫和指引】
+        reply: systemWarning + `【PaoPao教練溫和指引】
 
 嗨！親愛的夥伴，看見你願意主動了解食物、關心攝取，這就是最高等級的習慣認證！🎉
 
@@ -268,7 +205,7 @@ ${message}`;
       const sampleMins = 30;
       const burnVal = Math.round(item.met * 65 * (sampleMins / 60));
       return res.json({
-        reply: `【PaoPao教練運動指導】
+        reply: systemWarning + `【PaoPao教練運動指導】
 
 哇！看見你帶著滿滿行動力與我分享你的身體活動，教練的心情都亮了起來！☀️
 
@@ -292,7 +229,7 @@ ${message}`;
     // 3. Fallback check for "營養師" or "菜單" or "處方" specifically
     if (lowerMessage.includes("營養") || lowerMessage.includes("配方") || lowerMessage.includes("診斷") || lowerMessage.includes("糖尿病") || lowerMessage.includes("生病") || lowerMessage.includes("疾病") || lowerMessage.includes("菜單") || lowerMessage.includes("處方") || lowerMessage.includes("營養師")) {
       return res.json({
-        reply: `【PaoPao教練溫和提醒】
+        reply: systemWarning + `【PaoPao教練溫和提醒】
 
 嗨！夥伴，關於您諮詢的內容，我想要先與您說明教練的角色宗旨：
 
@@ -307,14 +244,14 @@ ${message}`;
     }
 
     const responses = [
-      `【PaoPao教練提示】\n嗨！ ${profile?.name || "夥伴"}，我是你的 PaoPao健康陪跑教練。很高興收到你的訊息！你現在願意誠實記錄、與我分享，就是最強大的健康自然習慣第一步。
+      systemWarning + `【PaoPao教練提示】\n嗨！ ${profile?.name || "夥伴"}，我是你的 PaoPao健康陪跑教練。很高興收到你的訊息！你現在願意誠實記錄、與我分享，就是最強大的健康自然習慣第一步。
  
 『我是您的 PaoPao健康陪跑教練，我可以為您提供大眾健康指引，但不能為您開立專屬醫療診斷與個人化臨床飲食處方。如有特定疾病、特殊控制或治療需求，請務必諮詢執業醫師、實體營養師等專業醫療機構。』
 
 🎯 【目標提醒】：${goalStr}${guidelineText}。依照哈佛健康餐盤，只要多吃原型食物、多喝溫白開水，每天稍微推進 1%, 就是在累積改變的複利！
 ☘️ 【可以怎麼做】：我們現在來個低磨損挑戰——深深用鼻子吸氣 4 秒、再用嘴巴吐氣 6 秒，連續做 2 次。這能馬上重置大腦壓力，你覺得如何？努力就是滿分！`,
  
-      `【PaoPao教練提示】\n（溫柔拍肩）我非常理解夥伴的心情！生活本來就是由各種不完美、偶爾的美食和大炸雞拼湊而成的。這才是最快樂健康的生理常規狀態！
+      systemWarning + `【PaoPao教練提示】\n（溫柔拍肩）我非常理解夥伴的心情！生活本來就是由各種不完美、偶爾的美食和大炸雞拼湊而成的。這才是最快樂健康的生理常規狀態！
 
 『我是您的 PaoPao健康陪跑教練，我可以為您提供大眾健康觀念，但不能為您開立專屬診斷與處方。』
  
@@ -324,11 +261,13 @@ ${message}`;
 
     const randomResp = responses[Math.floor(Math.random() * responses.length)];
     return res.json({ reply: randomResp });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error in /api/coach/chat:", error);
     res.status(500).json({ error: "教練現在有點累，請稍後再試！" });
   }
 });
+
+
 
 // 2. High-EQ Image Analyzer Endpoint
 app.post("/api/coach/analyze-image", async (req, res) => {
