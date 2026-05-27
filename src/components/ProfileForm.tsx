@@ -684,17 +684,28 @@ export default function ProfileForm({ profile, onSave }: ProfileFormProps) {
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-t border-dashed border-brand-border-light pt-2.5">
-                  <span className="text-[10px] font-medium text-brand-muted">🏃 自訂每日運動目標：</span>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="number"
-                      className="w-20 px-2 py-0.5 border border-brand-border rounded-lg text-center text-xs font-mono font-bold text-brand-green bg-white"
-                      value={formData.dailyExerciseTarget}
-                      onChange={(e) => setFormData(prev => ({ ...prev, dailyExerciseTarget: Number(e.target.value) || 0 }))}
-                    />
-                    <span className="text-[10px] text-brand-muted">分鐘 / 天</span>
+                <div className="flex flex-col gap-2.5 border-t border-dashed border-brand-border-light pt-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                    <span className="text-[10px] font-medium text-brand-muted">🏃 自訂每日運動目標：</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        className="w-20 px-2 py-0.5 border border-brand-border rounded-lg text-center text-xs font-mono font-bold text-brand-green bg-white"
+                        value={formData.dailyExerciseTarget}
+                        onChange={(e) => setFormData(prev => ({ ...prev, dailyExerciseTarget: Number(e.target.value) || 0 }))}
+                      />
+                      <span className="text-[10px] text-brand-muted flex items-center gap-1.5">
+                        <span>分鐘 / 天</span>
+                        <span className="text-[#8C8472] font-mono text-[9px] bg-brand-cream border px-1.5 py-0.5 rounded-md">
+                          (每週累積約: <strong className="font-extrabold text-brand-green font-mono">{(formData.dailyExerciseTarget || 0) * 7}</strong> 分鐘)
+                        </span>
+                      </span>
+                    </div>
                   </div>
+                  {/* WHO 身體活動科學指南提示 */}
+                  <p className="text-[9.5px] leading-relaxed text-[#8C8472] pl-2 border-l border-brand-green/30 italic font-normal">
+                    💡 **WHO 指導建議**：成年人每週應累積 **150 ~ 300 分鐘** 中等強度身體活動（每天約 20 ~ 40 分鐘）。不需給自己壓力，飯後悠閒散步、走樓梯或伸展皆可輕鬆計入！
+                  </p>
                 </div>
 
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-t border-dashed border-brand-border-light pt-2.5">
