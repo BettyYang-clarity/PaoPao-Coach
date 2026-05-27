@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect } from "react";
-import { WellnessRecord, UserProfile } from "../types";
+import { WellnessRecord, UserProfile, MicroTask } from "../types";
 import { evaluateBadges } from "../lib/badgeEngine";
 import { compressImage } from "../lib/imageCompress";
 import { 
@@ -37,6 +37,7 @@ interface WellnessDashboardProps {
   records: WellnessRecord[];
   profile: UserProfile;
   totalPoints: number;
+  microTasks: MicroTask[];
   onAddRecord: (record: WellnessRecord) => void;
   onDeleteRecord?: (recordId: string) => void;
 }
@@ -45,6 +46,7 @@ export default function WellnessDashboard({
   records,
   profile,
   totalPoints,
+  microTasks = [],
   onAddRecord,
   onDeleteRecord
 }: WellnessDashboardProps) {
@@ -52,6 +54,10 @@ export default function WellnessDashboard({
   const [showLogModal, setShowLogModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [isBadgesExpanded, setIsBadgesExpanded] = useState(false);
+
+  const badges = evaluateBadges(records, profile.dailyCalorieTarget || 1600, microTasks, totalPoints);
+  const unlockedBadgesCount = badges.filter(b => b.isUnlocked).length;
+  const totalBadgesCount = badges.length;
 
   // Advisory stationary tips board
   const PAOPAO_ADVICES = [
@@ -1261,7 +1267,7 @@ export default function WellnessDashboard({
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-sans font-extrabold text-brand-green px-2.5 py-1 bg-brand-cream border border-brand-sand rounded-xl shadow-3xs">
-              已解鎖 {evaluateBadges(records, profile.dailyCalorieTarget).filter(b => b.isUnlocked).length} / {evaluateBadges(records, profile.dailyCalorieTarget).length}
+              已解鎖 {unlockedBadgesCount} / {totalBadgesCount}
             </span>
             <ChevronDown size={14} className="text-brand-ash group-hover:text-brand-text group-hover:translate-y-0.5 transition-all" />
           </div>
@@ -1288,7 +1294,7 @@ export default function WellnessDashboard({
               <div className="flex items-center gap-2 px-3 py-1 bg-brand-cream border border-brand-border rounded-full shadow-3xs">
                 <span className="text-xs">🏆</span>
                 <span className="text-[10px] font-sans font-bold text-brand-green">
-                  已解鎖 {evaluateBadges(records, profile.dailyCalorieTarget).filter(b => b.isUnlocked).length} / {evaluateBadges(records, profile.dailyCalorieTarget).length} 個
+                  已解鎖 {unlockedBadgesCount} / {totalBadgesCount} 個
                 </span>
               </div>
               <ChevronUp size={14} className="text-brand-ash group-hover:text-brand-text group-hover:-translate-y-0.5 transition-all" />
@@ -1297,7 +1303,7 @@ export default function WellnessDashboard({
 
           {/* Badge Bento-like Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {evaluateBadges(records, profile.dailyCalorieTarget).map((badge) => {
+            {badges.map((badge) => {
               return (
                 <div
                   key={badge.id}
@@ -2232,12 +2238,12 @@ export default function WellnessDashboard({
                   <div className="flex items-center justify-between px-1">
                     <span className="text-[10px] font-extrabold text-[#5C564A]">🏆 收集的健康原子勳章</span>
                     <span className="text-[9px] font-bold text-brand-green">
-                      已累積獲得 {evaluateBadges(records, profile.dailyCalorieTarget).filter(b => b.isUnlocked).length} 個勳章
+                      已累積獲得 {unlockedBadgesCount} 個勳章
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2.5">
-                    {evaluateBadges(records, profile.dailyCalorieTarget).map((badge) => {
+                    {badges.map((badge) => {
                       return (
                         <div
                           key={`badge-hub-${badge.id}`}

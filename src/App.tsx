@@ -94,7 +94,7 @@ export default function App() {
   const [showChatModal, setShowChatModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
 
-  const badges = evaluateBadges(state.records, state.profile.dailyCalorieTarget || 1600);
+  const badges = evaluateBadges(state.records, state.profile.dailyCalorieTarget || 1600, state.microTasks, state.totalPoints);
   const unlockedBadgesCount = badges.filter(b => b.isUnlocked).length;
   const { consecutiveStreak, totalActiveDays } = getStreakInfo(state.records, state.microTasks);
 
@@ -502,6 +502,7 @@ export default function App() {
                   records={state.records}
                   profile={state.profile}
                   totalPoints={state.totalPoints}
+                  microTasks={state.microTasks}
                   onAddRecord={handleAddRecord}
                   onDeleteRecord={handleDeleteRecord}
                 />

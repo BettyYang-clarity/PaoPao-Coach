@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { WellnessRecord } from "../types";
+import { WellnessRecord, MicroTask } from "../types";
 
 export interface Badge {
   id: string;
@@ -46,7 +46,12 @@ function getLongestConsecutiveDays(dates: string[]): number {
   return longest;
 }
 
-export function evaluateBadges(records: WellnessRecord[], dailyCalorieTarget: number): Badge[] {
+export function evaluateBadges(
+  records: WellnessRecord[],
+  dailyCalorieTarget: number,
+  microTasks: MicroTask[] = [],
+  totalPoints: number = 0
+): Badge[] {
   // 1. Get dates arrays for streaks
   const dietDates = Array.from(new Set(
     records
@@ -85,6 +90,12 @@ export function evaluateBadges(records: WellnessRecord[], dailyCalorieTarget: nu
   const highestProteinVal = records
     .filter(r => r.type === "diet" && r.proteinGrams !== undefined)
     .reduce((max, r) => Math.max(max, r.proteinGrams || 0), 0);
+
+  // 5. Atomic task stats
+  const totalTasks = microTasks.length;
+  const completedTasks = microTasks.filter((t) => t.completed).length;
+  const hasCompletedAnyTask = completedTasks >= 1;
+  const isPerfectTasks = totalTasks > 0 && completedTasks === totalTasks;
 
   // Define badges
   return [
@@ -175,6 +186,50 @@ export function evaluateBadges(records: WellnessRecord[], dailyCalorieTarget: nu
       isUnlocked: records.length >= 5,
       progressText: `${records.length} / 5 筆`,
       color: "bg-purple-50 text-purple-800 border-purple-200"
+    },
+    {
+      id: "b-atomic-first",
+      name: "原子點火 ⚡",
+      description: "今日完成了至少 1 項原子小任務。微小的開始，就是複利的起點！",
+      unlockedDescription: "太棒了！你點燃了第一個微習慣火苗，大腦的阻力已經被你成功擊碎！",
+      icon: "⚡",
+      category: "general",
+      isUnlocked: hasCompletedAnyTask,
+      progressText: `${completedTasks} / 1`,
+      color: "bg-emerald-50 text-emerald-800 border-emerald-200"
+    },
+    {
+      id: "b-atomic-perfect",
+      name: "無痛全壘打 🏆",
+      description: "今日清單上的原子任務 100% 全數達成！以最低磨損的方式完成對自我的承諾。",
+      unlockedDescription: "無痛全壘打達成！你用最低磨損的堅持完成了所有的原子承諾，習慣大師就是你！",
+      icon: "🏆",
+      category: "general",
+      isUnlocked: isPerfectTasks,
+      progressText: totalTasks > 0 ? `${completedTasks} / ${totalTasks}` : "0 / 0",
+      color: "bg-amber-50 text-amber-800 border-amber-200"
+    },
+    {
+      id: "b-points-100",
+      name: "百倍複利雪球 ❄️",
+      description: "累積健康行為複利達 100 分。看吧，微小的習慣正在滾成大雪球！",
+      unlockedDescription: "恭喜解鎖百倍複利！100 分的行為積累，證明你已經掌握了無痛習慣的密碼！",
+      icon: "❄️",
+      category: "general",
+      isUnlocked: totalPoints >= 100,
+      progressText: `${totalPoints} / 100 分`,
+      color: "bg-sky-50 text-sky-800 border-sky-200"
+    },
+    {
+      id: "b-points-500",
+      name: "習慣複利奇蹟 👑",
+      description: "累積健康行為複利達 500 分。習慣複利的奇蹟，已在你的日常中發光發熱。",
+      unlockedDescription: "習慣複利奇蹟！500 分的深層蛻變，你已將健康認同深刻進了靈魂深處！",
+      icon: "👑",
+      category: "general",
+      isUnlocked: totalPoints >= 500,
+      progressText: `${totalPoints} / 500 分`,
+      color: "bg-purple-100 text-purple-900 border-purple-300"
     }
   ];
 }
