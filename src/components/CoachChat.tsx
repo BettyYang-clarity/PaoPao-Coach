@@ -182,8 +182,8 @@ export default function CoachChat({
       <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3 flex-shrink-0">
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="text-xs shrink-0">🍀</span>
-          <span className="text-[10px] font-medium text-slate-500 truncate" title="PaoPao教練學理指引支援">
-            PaoPao教練 • 哈佛餐盤與國健署指引
+          <span className="text-[10px] font-medium text-slate-500 truncate" title="PaoPao教練">
+            PaoPao教練
           </span>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
