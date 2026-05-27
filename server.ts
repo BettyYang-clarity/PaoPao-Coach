@@ -51,35 +51,22 @@ function base64ToPart(base64Str: string, mimeType: string) {
 }
 
 // System instruction for general High-EQ Chat
-const COACH_SYSTEM_PROMPT = `
-you're PaoPao教練, a warm, high-EQ coach. 你是一位充滿溫度、溫和且高度同理心的 PaoPao教練。你深諳「行為心理學」與「原子習慣」原理，且具備大眾健康飲食及身體活動指引常識。
+const COACH_SYSTEM_PROMPT = `你是一位充滿溫度、溫和且高度同理心的 PaoPao健康養成教練（簡稱 PaoPao教練）。你深諳「行為心理學」與「原子習慣」原理，且具備大眾健康飲食及身體活動指引常識。
 
 你的核心角色與規範：
 1. 【健康陪跑與原子習慣角色】：
-   - 抱持 100% 溫暖、接納與同理心。無論使用者是否達標、是否吃了高糖油炸美食，絕對不予以任何指責、罪惡感威脅或審判。誠實記錄是好習慣的起點，要隨喜讚賞他們的誠實。
-   - 【嚴禁提供個人化治療處方】：你不得為使用者進行臨床醫療診斷、不得提供任何個別的「個人化臨床飲食治療方案或特定配方飲食」。
-   - 當使用者詢問個人特定疾病菜單、診斷、或要求專屬減脂餐時，必須先謙和發出聲明：
-     『我是您的健康陪跑夥伴 PaoPao教練，我可以提供您大眾健康與營養常識科普引導，但不能提供專屬醫療診斷與個人化臨床治療處方。如有特定疾病、特殊控制需求，請務必諮詢執業醫師、實體營養師等專業醫療團隊。』
-   - 【日常健康科普指引】：引導並鼓勵使用者維持均衡且低油、低鹽、低糖、高纖維的天然飲食原則。
-
-2. 【食物檢索與營養估值功能（新加入）】：
-   - 當使用者的對話中主動提到了特定的食物名稱（例如：「我想吃香蕉」、「剛剛吃了滷肉飯」、「珍珠奶茶多少卡」、「牛排」等，或發送食物／運動照片）。此外，也提供與健康運動相關、同理心滿滿的回答。
+   - 抱持 100% 溫慢、接納與同理心。無論使用者是否達標、是否吃了低糖低脂或高糖油炸美食，絕對不予以任何指責、罪惡感威脅或審判。誠實記錄是好習慣的起點，要隨喜讚賞他們的誠實。
+   - 【低磨損、微小而持續的習慣建立】：你深信「每天累積 1% 的改變」，避免給予過於龐大或高難度的目標。始終提供溫和、易行的微習慣指引，幫助大腦降低阻力，輕鬆邁出下一小步。
+   - 【嚴禁提供個人化醫療或治療處方】：你不得為使用者開立個人專屬健康管理或特定臨床控制處方。在你的回答結尾，必須包含以下大眾免責指引聲明：
+     「我是您的 PaoPao健康陪跑教練，我可以為您提供大眾健康指引，但不能為您開立專屬醫療診斷與個人化臨床飲食處方。如有特定疾病、特殊控制或治療需求，請務必諮詢執業醫師、實體營養師等專業醫療機構唷。」
+2. 【哈佛健康餐盤推廣】：
+   - 引導使用者往「原型食物」、「蔬菜佔半、優質全穀與健康蛋白各佔四分之一」的大眾健康基礎前進，而非斤斤計較於複雜的熱量與克數。
 `;
 
 // System instruction for Image Analyzer
 const IMAGE_ANALYZER_PROMPT = `
 you're PaoPao教練, a warm, high-EQ image analyzer. 你是一位專門分析健康飲食和活動照片的 AI 專家。
-請根據使用者上傳的照片，判斷並回傳符合規範的 JSON 物件。不要輸出任何 Markdown 或是 json 外的文字。
-
-特別注意：
-1. 分析這張照片是食物/飲食還是身體活動/運動項目：
-   - 如果是食物：將 type 設為 "diet"，估算其約略卡路里 (卡路里 kcal 值，為整數，填入 estimatedValue)，unit 設為 "大卡"。並粗估三大營養質與膳食纖維狀態。填入 nutritionRough 結構中。
-   - 如果是運動或活動：將 type 設為 "exercise"，估算合適的建議時間（分鐘值，填入 estimatedValue），unit 設為 "分鐘"。
-2. 計算 pointsEarned：不論使用者上傳什麼照片，只要誠實記錄就給予點數獎勵（通常為 25 點）。
-3. 撰寫 coachFeedback：
-   - 發揮 PaoPao 教練溫慢、接納且毫無批判的暖心口氣，用引人共鳴的原子習慣科學原理解釋：此照片代表的健康認同感。
-   - 根據照片內容，給予一個極具體、低門檻且磨損率超低的「微型健康任務」。
-   - 【嚴禁開立醫療處方及特定診斷】：必須於 coachFeedback 尾聲包含以下免責聲明：『⚠️ 貼心提醒：本數據為官方食品營養庫/運動代謝能耗及文獻大眾標準平均估值，實際熱量會因料理及個人心率體脂率而異。教練提供科普建議，不具臨床診斷 or 個人化治療處方之效力。如有特定疾病、特殊控制需求，請務必諮詢執業醫師、實體營養師等專業醫療團隊喔！』
+請根據使用者上傳的照片，判斷並回傳符合規範的 JSON 物件。不要輸出任何 Markdown 標記（如 \`\`\`json 標記），請直接回傳純 JSON 字串。
 `;
 
 const fallbackFoods: Record<string, { kcal: number; protein: string; carbs: string; fat: string; desc: string }> = {
@@ -88,21 +75,21 @@ const fallbackFoods: Record<string, { kcal: number; protein: string; carbs: stri
     protein: "1.1g",
     carbs: "23g",
     fat: "0.3g",
-    desc: "香蕉富含鉀離子與膳食纖維，能量補充快速，是運動前後的絕佳好夥伴！"
+    desc: "香蕉富含鉀離子與快速吸收的碳水化合物，是運動前後補充能量的絕佳聖品！"
   },
   滷肉飯: {
     kcal: 650,
     protein: "18g",
-    carbs: "85g",
-    fat: "25g",
-    desc: "滷肉飯美味飽足，唯脂肪量與精緻澱粉較高，建議搭配一盤燙青菜與滷蛋平衡營養喔！"
+    carbs: "75g",
+    fat: "30g",
+    desc: "滷肉飯油脂與精緻澱粉較高，建議搭配一盤燙青菜與滷蛋，來增加纖維與優質蛋白質的平衡。"
   },
   珍珠奶茶: {
     kcal: 550,
-    protein: "5g",
-    carbs: "90g",
-    fat: "20g",
-    desc: "珍奶含有較高精緻糖及油脂，建議偶爾當作生活小確幸，平常以無糖茶或低脂鮮奶替代更佳！"
+    protein: "3g",
+    carbs: "80g",
+    fat: "15g",
+    desc: "珍珠奶茶含糖與精緻澱粉較高，偶爾享受沒關係，建議搭配無糖綠茶或微糖無糖豆漿，更能享受茶香與更輕盈的美味組合！"
   },
   牛排: {
     kcal: 400,
@@ -138,7 +125,7 @@ app.post("/api/coach/chat", async (req, res) => {
 
     let systemWarning = "";
     if (!isKeyPresent) {
-      systemWarning = "⚠️ 【系統診斷：尚未設定您的 GEMINI_API_KEY 金鑰。請點擊右上角「Settings > Secrets」即可解開真實智慧 PaoPao 陪跑教練！暫時為您啟用高品質原子習慣模擬對話。】\n\n";
+      systemWarning = "⚠️ 【系統診斷：尚未設定您的 GEMINI_API_KEY 金鑰。此為自主託管的 Vercel 佈署，請至您的 Vercel 專案 Dashboard ➔ Settings ➔ Environment Variables 新增名為 `GEMINI_API_KEY` 的環境變數即可啟用真實的 AI 智慧教練！暫時為您啟用高品質原子習慣模擬對話。】\n\n";
     }
 
     if (isKeyPresent) {
@@ -148,7 +135,7 @@ app.post("/api/coach/chat", async (req, res) => {
 ${JSON.stringify(profile)}
 
 【歷史對話紀錄】
-${history && Array.isArray(history) ? history.map((m) => `${m.sender === "bot" ? "教練(PaoPao)" : "使用者"}: ${m.text}`).join("\n") : "無"}
+${history && Array.isArray(history) ? history.map((m: any) => `${m.sender === "bot" ? "教練(PaoPao)" : "使用者"}: ${m.text}`).join("\n") : "無"}
 
 【最新使用者訊息】
 ${message}`;
@@ -164,9 +151,9 @@ ${message}`;
         if (response && response.text) {
           return res.json({ reply: response.text });
         }
-      } catch (realAiError) {
+      } catch (realAiError: any) {
         console.error("⚠️ Real Gemini API Call failed, falling back to High-EQ mock engine:", realAiError);
-        systemWarning = `⚠️ 【系統診斷：Gemini 連線失敗（錯誤資訊：${realAiError.message || realAiError}）。請檢查 Settings -> Secrets 面板金鑰效期或輸入格式。暫時啟用高品質原子習慣模擬對話。】\n\n`;
+        systemWarning = `⚠️ 【系統診斷：Gemini 連線失敗（錯誤資訊：${realAiError.message || realAiError.details || realAiError}）。請檢查 Vercel 或是 AI Studio 設定的金鑰格式（GEMINI_API_KEY）。暫時啟用高品質原子習慣模擬對話。】\n\n`;
       }
     }
 
@@ -183,55 +170,8 @@ ${message}`;
 對於您詢問的食物：【${foodKey}】🍉
 💡 衛生福利部國健署標準營養成分與大眾飲食指南推薦供您客觀參考：
 • 估計約熱量：約 **${item.kcal}** kcal （大卡）
-• 估計蛋白質：約 **${item.protein}**
-• 估計碳水化合物：約 **${item.carbs}**
-• 估計脂肪：約 **${item.fat}**
-• 🥗 貼心提醒小叮嚀：${item.desc}
-並依照世界權威【哈佛健康飲食盤】指引，鼓勵您多以原型食物為主，餐盤安排把握『多蔬菜、多全穀、優蛋白質』原則！
-
-⚠️ 專業免責聲明：
-我是您的 PaoPao健康陪跑教練，我可以為您提供大眾健康與營養常識科普引導，但不能為您開立專屬醫療診斷與個人化臨床飲食處方。如有特定疾病、特殊控制或治療需求，請務必諮詢執業醫師、實體營養師等專業醫療機構唷。
-⚠️ 貼心提醒：本數據為官方食品庫及文獻之大眾標準平均估值，實際會因烹調、油量與精確份量而有所不同。
-
-🎯 【個人目標對聯方式】：${goalStr}${guidelineText}！
-☘️ 【今日低阻力任務】：我們這餐多喝一杯 100ml 溫白開水，陪伴你的代謝系統溫和前進！`
-      });
-    }
-
-    // 2. Check for exercise matches
-    let exerciseKey = Object.keys(fallbackExercises).find(k => lowerMessage.includes(k));
-    if (exerciseKey) {
-      const item = fallbackExercises[exerciseKey];
-      const sampleMins = 30;
-      const burnVal = Math.round(item.met * 65 * (sampleMins / 60));
-      return res.json({
-        reply: systemWarning + `【PaoPao教練運動指導】
-
-哇！看見你帶著滿滿行動力與我分享你的身體活動，教練的心情都亮了起來！☀️
-
-對於您詢問的運動：【${exerciseKey}】🏃‍♀️
-🏃‍♂️ 國健署與國際運動學會標準運動能耗與身體活動指南參考：
-• 代謝當量 (METs)：約 **${item.met}**
-• ⏳ 安排以標準 65kg 成人進行 **${sampleMins} 分鐘** 估算：
-  約能消耗：約 **${burnVal}** kcal （大卡）
-• ☘️ 官方常規指引：${item.desc}
-國健署推薦，成人每週可累計 150 分鐘以上中度身體活動（微汗且能說話）。但別給自己太大壓力，在原子習慣中，哪怕只有在原地抬腿、或散步 20 秒，大腦的神經迴路就已經認證了健康的身份認同！
-
-⚠️ 專業免責聲明：
-我是您的 PaoPao健康陪跑教練，我可以為您提供大眾健康指引，但不能為您開立專屬診斷與運動醫療處方。如有身體特殊不適，請遵循相關醫療專業團隊。
-⚠️ 貼心提醒：此運動消耗與代謝能耗為官方平均活動強度參考值，實際耗能會因個人體脂率、心率狀態及肌肉量多寡而有所差異。
-
-🎯 【個人目標對聯方式】：${goalStr}${guidelineText}。
-☘️ 【今日低阻力任務】：拉伸肩膀轉動 15 秒鐘，深沉呼吸，這就是最好的自我愛護動作囉！`
-      });
-    }
-
-    // 3. Fallback check for "營養師" or "菜單" or "處方" specifically
-    if (lowerMessage.includes("營養") || lowerMessage.includes("配方") || lowerMessage.includes("診斷") || lowerMessage.includes("糖尿病") || lowerMessage.includes("生病") || lowerMessage.includes("疾病") || lowerMessage.includes("菜單") || lowerMessage.includes("處方") || lowerMessage.includes("營養師")) {
-      return res.json({
-        reply: systemWarning + `【PaoPao教練溫和提醒】
-
-嗨！夥伴，關於您諮詢的內容，我想要先與您說明教練的角色宗旨：
+• 粗估營養素：碳水 ${item.carbs}、蛋白質 ${item.protein}、脂肪 ${item.fat}。
+• 教練科普小叮嚀：${item.desc}
 
 『我是您的 PaoPao健康陪跑教練，我可以為您提供大眾健康指引，但不能為您開立專屬醫療診斷與個人化臨床飲食處方。如有特定疾病、特殊控制或治療需求，請務必諮詢執業醫師、實體營養師等專業醫療機構唷。』
 
@@ -240,6 +180,28 @@ ${message}`;
 
 🎯 【目標提醒】：${goalStr}。
 ☘️ 【微習慣建議】：今天晚餐的第一口，請試著先從「一口蛋白質」或「一口蔬菜」開始吃起，以此取代精緻澱粉的先發吸收，幫助身體無壓力感受平穩活力！`
+      });
+    }
+
+    // 2. Check for exercise matches
+    let exerciseKey = Object.keys(fallbackExercises).find(k => lowerMessage.includes(k));
+    if (exerciseKey) {
+      const item = fallbackExercises[exerciseKey as keyof typeof fallbackExercises];
+      return res.json({
+        reply: systemWarning + `【PaoPao教練溫和指引】
+
+嗨！親愛的夥伴，聽你提到進行了【${exerciseKey}】活動，真的要為你熱烈鼓掌！👏 在原子習慣的科學中，「準備並跨出第一步」就是最容易卡關的 80% 阻力，而你已經帥氣通關了！
+
+💡 運動常識科普與代謝率（MET）估算：
+• 該運動活動代謝率（MET）約為：**${item.met}**
+• 習慣科普小筆記：${item.desc}
+
+『我是您的 PaoPao健康陪跑教練，我可以為您提供大眾健康指引，但不能為您開立專屬醫療診斷與個人化臨床飲食處方。如有特定疾病、特殊控制或治療需求，請務必諮詢執業醫師、實體營養師等專業醫療機構唷。』
+
+你可以如何無痛放大這個好習慣：
+☘️ 【微習慣建議】：在剛運動完的這 30 分鐘，請順手給自己盛上一杯 300ml 的微溫水，一口口慢吞吞地喝完它。這是最棒、最簡單、也最不需要意志力就能幫助肌肉修補和加速乳酸代謝的習慣連結。
+
+今天真的做得太棒了，持續累積你的微小改變吧！`
       });
     }
 
@@ -266,8 +228,6 @@ ${message}`;
     res.status(500).json({ error: "教練現在有點累，請稍後再試！" });
   }
 });
-
-
 
 // 2. High-EQ Image Analyzer Endpoint
 app.post("/api/coach/analyze-image", async (req, res) => {
@@ -320,10 +280,10 @@ app.post("/api/coach/analyze-image", async (req, res) => {
         // Call real Gemini model with image data
         const part = base64ToPart(image, "image/jpeg");
         const response = await ai.models.generateContent({
-          model: "gemini-flash-latest",
+          model: "gemini-3.5-flash",
           contents: [
             part,
-            { text: `使用者個人檔案: ${JSON.stringify(profile)}。請根據圖片分析，回傳 JSON 格式。` }
+            { text: `使用者個人檔案: ${JSON.stringify(profile)}。請根據圖片分析，回傳符合 schema 的 JSON 格式。` }
           ],
           config: {
             systemInstruction: IMAGE_ANALYZER_PROMPT,
@@ -354,7 +314,7 @@ app.post("/api/coach/analyze-image", async (req, res) => {
         });
 
         if (response && response.text) {
-          const result = JSON.parse(response.text || "{}");
+          const result = JSON.parse(response.text.trim() || "{}");
           return res.json(result);
         }
       } catch (realAiError: any) {
@@ -402,7 +362,7 @@ app.post("/api/coach/suggest-tasks", async (req, res) => {
           completed: false,
           points: sh.level === 1 ? 15 : sh.level === 2 ? 25 : 35,
           suggestion: foundHabit.suggestion
-        });
+         });
       }
     });
 
