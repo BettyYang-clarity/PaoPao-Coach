@@ -75,6 +75,11 @@ export default function WellnessDashboard({
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // AI intermediate states for user confirmation flow
+  const [aiFeedback, setAiFeedback] = useState<string | null>(null);
+  const [aiPoints, setAiPoints] = useState<number | null>(null);
+  const [aiImageUrl, setAiImageUrl] = useState<string | null>(null);
+
   // States for Diet Log
   const [dietTitle, setDietTitle] = useState("");
   const [dietKcal, setDietKcal] = useState<number | "">("");
@@ -166,24 +171,43 @@ export default function WellnessDashboard({
         throw new Error("影像辨識失敗");
       }
 
-      const record: WellnessRecord = await res.json();
-      onAddRecord(record);
+      const apiResult = await res.json();
+      
+      // 自動切換到對應 Tab 且填寫欄位
+      setActiveTab(apiResult.type); // "diet" 或 "exercise"
+      
+      if (apiResult.type === "diet") {
+        setDietTitle(apiResult.title || "美味飲食記錄 🍱");
+        setDietKcal(apiResult.estimatedValue || "");
+        setDietProtein(apiResult.proteinGrams || "");
+      } else {
+        setExerciseTitle(apiResult.title || "活力運動記錄 🏃‍♀️");
+        setExerciseMin(apiResult.estimatedValue || "");
+        setExerciseBurnedKcal(apiResult.caloriesBurned || "");
+      }
+
+      // 儲存 AI 暫存狀態
+      setAiFeedback(apiResult.coachFeedback);
+      setAiPoints(apiResult.pointsEarned);
+      setAiImageUrl(base64);
+
+      // 自動跳出 Modal 讓使用者確認儲存！
+      setShowLogModal(true);
 
     } catch (err: any) {
       console.error(err);
-      setImgError("辨識服務稍微忙碌，已自動為您將健康誠實足跡同步至生活牆囉！💖");
+      setImgError("辨識服務稍微忙碌，已為您自動填充默認數據，請確認後登錄唷！💖");
       
-      const fallbackRecord: WellnessRecord = {
-        id: `r-fallback-${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        type: "diet",
-        title: "誠實記錄的美味相片 🧁",
-        estimatedValue: 320,
-        unit: "大卡",
-        pointsEarned: 20,
-        coachFeedback: "看看這張美麗的照片！看見你如此誠實地拍下飲食並用心紀錄，習慣的天線瞬間被幸福感加爆。誠實代表你的大腦已經主動覺察。已成功認證並計入你的原子勳章進度中！"
-      };
-      onAddRecord(fallbackRecord);
+      setActiveTab("diet");
+      setDietTitle("誠實記錄的美味點心 🧁");
+      setDietKcal(320);
+      setDietProtein("");
+      
+      setAiFeedback("雖然我的相機今天稍微模糊了一下，但看見你誠實拍下照片並記錄，我的原子習慣天線瞬間加滿！誠實是好習慣的第一滴雨水。直接幫你加記錄點 20 點！");
+      setAiPoints(20);
+      setAiImageUrl(null);
+      
+      setShowLogModal(true);
     } finally {
       setImgLoading(false);
     }
@@ -410,15 +434,16 @@ export default function WellnessDashboard({
         title,
         estimatedValue: kcal,
         unit: "大卡",
-        pointsEarned: 20,
+        pointsEarned: aiPoints || 20,
         proteinGrams: proteinVal,
+        imageUrl: aiImageUrl || undefined,
         nutritionRough: {
           carbs: "充足 (碳水提供能量)",
           protein: proteinVal !== undefined ? `${proteinVal}克` : "適中 (肌肉修復活力)",
           fat: "適量",
           veg: "較少 (記得下一頓多吃幾口青菜唷)"
         },
-        coachFeedback: `哇，誠實記錄了『${title}』${proteinVal !== undefined ? `（含 ${proteinVal} 克蛋白質）` : ""}大餐！這是一次超棒的前進喔。不完美也是美好的滋味，我們已成功在您的「原子勳章生活牆」打上認證鋼印！建議今晚多做 30 秒拉筋或舒服深呼吸，讓身體好好消化！`
+        coachFeedback: aiFeedback || `哇，誠實記錄了『${title}』${proteinVal !== undefined ? `（含 ${proteinVal} 克蛋白質）` : ""}大餐！這是一次超棒的前進喔。不完美也是美好的滋味，我們已成功在您的「原子勳章生活牆」打上認證鋼印！建議今晚多做 30 秒拉筋或舒服深呼吸，讓身體好好消化！`
       };
 
       setDietTitle("");
@@ -436,9 +461,10 @@ export default function WellnessDashboard({
         title,
         estimatedValue: minutes,
         unit: "分鐘",
-        pointsEarned: 20,
+        pointsEarned: aiPoints || 20,
         caloriesBurned: burnedVal,
-        coachFeedback: `太強了！你今天動了 ${minutes} 分鐘（${title}）${burnedVal !== undefined ? `，估計消耗了 ${burnedVal} 大卡` : ""}，這可是真真切切的健康存款。不管動作有多簡單、就算只是拉筋扭腰，你的身體細胞都在開心地對你唱歌唷。今日已在「原子勳章生活牆」蓋上實體認證！`
+        imageUrl: aiImageUrl || undefined,
+        coachFeedback: aiFeedback || `太強了！你今天動了 ${minutes} 分鐘（${title}）${burnedVal !== undefined ? `，估計消耗了 ${burnedVal} 大卡` : ""}，這可是真真切切的健康存款。不管動作有多簡單、就算只是拉筋扭腰，你的身體細胞都在開心地對你唱歌唷。今日已在「原子勳章生活牆」蓋上實體認證！`
       };
 
       setExerciseTitle("");
@@ -471,6 +497,11 @@ export default function WellnessDashboard({
       };
       setMoodNotes("");
     }
+
+    // Reset AI intermediate states after saving
+    setAiFeedback(null);
+    setAiPoints(null);
+    setAiImageUrl(null);
 
     onAddRecord(freshRecord);
     setIsLoading(false);
@@ -1331,12 +1362,24 @@ export default function WellnessDashboard({
                 <h3 className="font-sans text-sm font-bold text-brand-text">習慣記錄 & 快速無痛加分</h3>
               </div>
               <button
-                onClick={() => setShowLogModal(false)}
+                onClick={() => {
+                  setShowLogModal(false);
+                  setAiFeedback(null);
+                  setAiPoints(null);
+                  setAiImageUrl(null);
+                }}
                 className="p-1.5 hover:bg-brand-cream border border-transparent hover:border-brand-border rounded-xl transition-all cursor-pointer text-brand-ash hover:text-brand-muted"
               >
                 <X size={16} />
               </button>
             </div>
+
+            {aiFeedback && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] rounded-xl flex items-center gap-1.5 animate-pulse font-sans">
+                <Sparkles size={12} className="text-emerald-600 flex-shrink-0 animate-bounce" />
+                <span>💡 <b>PaoPao AI 已自動辨識完成！</b>請確認或調整以下辨識出來的數據，確認無誤後點擊儲存即可！</span>
+              </div>
+            )}
 
             {/* Segment Tab buttons inside the pop-up */}
             <div className="flex bg-brand-cream border border-brand-border p-1 rounded-xl">

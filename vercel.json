@@ -1,12 +1,11 @@
 {
   "version": 2,
   "functions": {
-    "api/index.ts": {
+    "api/coach/*.ts": {
       "maxDuration": 30
     }
   },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api" },
-    { "source": "/(.*)", "destination": "/$1" }
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

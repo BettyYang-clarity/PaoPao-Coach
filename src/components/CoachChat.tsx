@@ -101,10 +101,27 @@ export default function CoachChat({
         throw new Error("伺服器影像辨識失敗");
       }
 
-      const record: WellnessRecord = await res.json();
+      const apiResult = await res.json();
+      const titleEmoji = apiResult.type === "diet" ? "🍱" : "🏃‍♀️";
+      const titleText = apiResult.type === "diet" 
+        ? `AI 飲食辨識: ${apiResult.estimatedValue} ${apiResult.unit}`
+        : `AI 運動辨識: ${apiResult.estimatedValue} ${apiResult.unit}`;
+
+      const finalRecord: WellnessRecord = {
+        id: `r-ai-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        type: apiResult.type,
+        title: `${titleEmoji} ${titleText}`,
+        imageUrl: base64, // 保留拍照以在健康牆上秀出！
+        estimatedValue: apiResult.estimatedValue,
+        unit: apiResult.unit,
+        pointsEarned: apiResult.pointsEarned,
+        coachFeedback: apiResult.coachFeedback,
+        nutritionRough: apiResult.nutritionRough
+      };
       
       // Update the parent: logs food, adds points, advances pet sprout
-      onImageAnalysisResult(record);
+      onImageAnalysisResult(finalRecord);
 
     } catch (err: any) {
       console.error(err);

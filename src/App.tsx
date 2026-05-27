@@ -244,7 +244,13 @@ export default function App() {
         })
       });
 
-      if (!res.ok) throw new Error("對話回傳失敗");
+      if (!res.ok) {
+        let errDetail = "";
+        try {
+          errDetail = await res.text();
+        } catch (_) {}
+        throw new Error(`對話回傳失敗 (狀態碼: ${res.status}${errDetail ? ", 內容: " + errDetail.slice(0, 100) : ""})`);
+      }
       const data = await res.json();
 
       // Append chatbot reply
@@ -260,13 +266,13 @@ export default function App() {
         messages: [...prev.messages, coachMsg]
       }));
 
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      // Fallback message
+      // Fallback message with debug details
       const fallbackMsg: ChatMessage = {
         id: `m-bot-fallback-${Date.now()}`,
         sender: "bot",
-        text: "嗨！在忙嗎？不論過得如何，都感謝你誠實寫下來！你今天想要聽聽什麼微小的健康加分點滴呢？❤️",
+        text: `嗨！在忙嗎？不論過得如何，都感謝你誠實寫下來！你今天想要聽聽什麼微小的健康加分點滴呢？❤️\n\n⚠️ 【前端連線診斷資訊】\n- 連線錯誤：${e.message || JSON.stringify(e)}\n- 請求路徑：/api/coach/chat`,
         timestamp: new Date().toISOString()
       };
       setState((prev) => ({
@@ -406,7 +412,10 @@ export default function App() {
                     {/* Trigger: Chatbot Dialog */}
                     <button
                       id="btn-coach-chat"
-                      onClick={() => setShowChatModal(true)}
+                      onClick={() => {
+                        handleClearMessages();
+                        setShowChatModal(true);
+                      }}
                       className="p-3 bg-brand-cream hover:bg-[#F3EFE6] border border-brand-border rounded-2xl flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer transition-all hover:-translate-y-0.5 shadow-3xs hover:shadow-2xs"
                       title="PaoPao教練"
                     >
@@ -518,6 +527,7 @@ export default function App() {
                 id="btn-close-chat"
                 onClick={() => {
                   setShowChatModal(false);
+                  handleClearMessages();
                 }}
                 className="p-1.5 hover:bg-brand-cream border border-transparent hover:border-brand-border rounded-xl transition-all cursor-pointer text-brand-ash hover:text-brand-muted"
               >
@@ -605,7 +615,10 @@ export default function App() {
               exit={{ scale: 0, opacity: 0 }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => setShowChatModal(true)}
+              onClick={() => {
+                handleClearMessages();
+                setShowChatModal(true);
+              }}
               className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-5 py-3 shadow-xl hover:shadow-2xl flex items-center gap-2 cursor-pointer border border-emerald-500/20 group relative"
               title="隨時找 PaoPao 教練聊聊"
             >
