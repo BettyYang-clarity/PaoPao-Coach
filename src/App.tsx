@@ -429,16 +429,28 @@ export default function App() {
             >
               {/* TOP REMINDER BANNER FOR PERSONAL GOAL & MODAL TRIGGERS */}
               <div id="top-reminder-hero" className="p-6 md:p-8 bg-white border border-brand-border rounded-[32px] shadow-3xs flex flex-col md:flex-row gap-6 items-center justify-between transition-all hover:shadow-2xs animate-fade-in">
-                <div className="flex-1 flex flex-col gap-2">
+                <div className="flex-1 flex flex-col gap-2.5">
                   <span className="inline-flex items-center gap-1.5 text-[9px] font-sans font-bold tracking-widest uppercase text-brand-green bg-brand-beige px-3 py-1 rounded-full border border-brand-sand max-w-fit">
                     🌱 今日原子健康計畫指南
                   </span>
                   <h2 className="font-sans text-sm font-bold border-none text-brand-olive leading-tight">
                     {state.profile.customGoal ? `「${state.profile.customGoal}」` : "「歡迎點擊個人設定，開啟專屬您的無痛小習慣之旅 ☘️」"}
                   </h2>
-                  <p className="text-[10px] text-brand-ash leading-relaxed">
-                    PaoPao教練：微小習慣最牢固。今天只要前進 1% 就是最大成功！🌿
-                  </p>
+                  <div className="text-[10.5px] text-brand-ash leading-relaxed font-medium font-sans flex flex-col gap-1.5 mt-0.5 border-t border-brand-border-light/40 pt-2.5">
+                    <span className="font-extrabold text-brand-olive text-xs">PaoPao教練：為你拆解今日健康戰略 ➔</span>
+                    <p className="pl-2 border-l-2 border-brand-green/30">
+                      1. **飲食防線**：對齊大眾哈佛餐盤比例，將今日總攝取控制在 **{state.profile.dailyCalorieTarget || 1600} 大卡** 內。
+                    </p>
+                    <p className="pl-2 border-l-2 border-brand-green/30">
+                      2. **習慣累積**：勾選並完成下方的 **「今日原子任務」**。運動或喝水後隨手打卡以累積行為複利。
+                    </p>
+                    <p className="pl-2 border-l-2 border-brand-green/30">
+                      3. **修護與能耗**：維持 **{state.profile.dailySleepTarget || 7} 小時** 睡眠，並透過起步走走達成 **{state.profile.dailyExerciseTarget || 30} 分鐘** 活動量。
+                    </p>
+                    <span className="text-[9.5px] text-[#A39B8D] italic font-normal mt-1 flex items-center gap-1">
+                      💡 指引：點擊右側「原子健康計劃 📋」看完整圖表戰略，或點擊「PaoPao教練」拍照辨識、對話解惑。每天溫和前行 1%！
+                    </span>
+                  </div>
                 </div>
                 
                 {/* THE "OTHERS BECOME ICONS" CONTROL DOCK */}
