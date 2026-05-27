@@ -24,7 +24,8 @@ app.use(express.urlencoded({ extended: true, limit: "15mb" }));
 let aiClient: GoogleGenAI | null = null;
 function getGeminiClient(): GoogleGenAI {
   if (!aiClient) {
-    const key = process.env.GEMINI_API_KEY;
+    const rawKey = process.env.GEMINI_API_KEY;
+    const key = rawKey ? rawKey.trim().replace(/^['"]|['"]$/g, '') : '';
     if (!key) {
       console.warn("⚠️ Warning: GEMINI_API_KEY is not set. The coach features will run in mock mode.");
     }
@@ -178,10 +179,30 @@ app.post("/api/coach/chat", async (req, res) => {
 
     let guidelineText = "";
     if (profile?.selectedGuidelines && profile.selectedGuidelines.length > 0) {
-      guidelineText = `，積極守護承諾微習慣方針【${profile.selectedGuidelines.map((item: any) => item.habitName).join("、")}】`;
+      const names = profile.selectedGuidelines.map((item: any) => {
+        if (!item) return "";
+        if (typeof item === "string") {
+          const translation: Record<string, string> = {
+            diet_whole: "多吃原型食物",
+            water_more: "充足水分補給",
+            rest_sleep: "高品質睡眠與休息",
+            exercise_cardio: "規律有氧運動",
+            strength_train: "漸進式肌力訓練",
+            mindful_breathing: "每日正念深呼吸",
+            weight_record: "誠實記錄體重"
+          };
+          return translation[item] || item;
+        }
+        return item.habitName || item.name || JSON.stringify(item);
+      }).filter(Boolean);
+
+      if (names.length > 0) {
+        guidelineText = `，積極守護承諾微習慣方針【${names.join("、")}】`;
+      }
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const rawApiKey = process.env.GEMINI_API_KEY;
+    const apiKey = rawApiKey ? rawApiKey.trim().replace(/^['"]|['"]$/g, '') : '';
     const isKeyPresent = apiKey && apiKey !== "MY_GEMINI_API_KEY" && apiKey !== "MOCK_KEY" && apiKey !== "undefined" && apiKey !== "";
 
     if (isKeyPresent) {
@@ -197,7 +218,7 @@ ${history && Array.isArray(history) ? history.map((m: any) => `${m.sender === "b
 ${message}`;
 
         const response = await ai.models.generateContent({
-          model: "gemini-3.5-flash",
+          model: "gemini-flash-latest",
           contents: prompt,
           config: {
             systemInstruction: COACH_SYSTEM_PROMPT
@@ -317,14 +338,14 @@ app.post("/api/coach/analyze-image", async (req, res) => {
       return res.status(400).json({ error: "請提供圖片資料" });
     }
 
-    const ai = getGeminiClient();
-    const apiKey = process.env.GEMINI_API_KEY;
+    const rawApiKey = process.env.GEMINI_API_KEY;
+    const apiKey = rawApiKey ? rawApiKey.trim().replace(/^['"]|['"]$/g, '') : '';
+    const isKeyPresent = apiKey && apiKey !== "MY_GEMINI_API_KEY" && apiKey !== "MOCK_KEY" && apiKey !== "undefined" && apiKey !== "";
 
-    if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || apiKey === "MOCK_KEY") {
-      // Mock fallback response
+    const getMockResponse = () => {
       const isExercise = image.includes("exercise") || Math.random() > 0.5;
       if (isExercise) {
-        return res.json({
+        return {
           type: "exercise",
           estimatedValue: 30,
           unit: "分鐘",
@@ -336,9 +357,9 @@ app.post("/api/coach/analyze-image", async (req, res) => {
           },
           pointsEarned: 25,
           coachFeedback: "哇！看見你如此熱情地活動身體，這項了不起的主動選擇就是愛你自己的最好證明！我們不限運動強度，僅此登錄誠實行動就為你帶來充滿活力的多巴胺加分！今天直接獲得 **25 點健康加分**！今天的微小加分任務：來杯 300ml 的微溫水補充代謝消耗！"
-        });
+        };
       } else {
-        return res.json({
+        return {
           type: "diet",
           estimatedValue: 450,
           unit: "大卡",
@@ -350,48 +371,59 @@ app.post("/api/coach/analyze-image", async (req, res) => {
           },
           pointsEarned: 25,
           coachFeedback: "哇！看到你在食物前停下、拍照並誠實記錄，這個細小的動作在原子習慣中，價值等同於 200 分的堅持！不完美也非常美味，這餐提供你源源不絕的活力多巴胺。我們今天直接獲得 **25 點健康加分**！今天的微小加分任務：來杯 300ml 的水或無糖茶，幫你新陳代謝、清除油膩，你已經做得超級棒囉！"
+        };
+      }
+    };
+
+    if (isKeyPresent) {
+      try {
+        const ai = getGeminiClient();
+        // Call real Gemini model with image data
+        const part = base64ToPart(image, "image/jpeg");
+        const response = await ai.models.generateContent({
+          model: "gemini-flash-latest",
+          contents: [
+            part,
+            { text: `使用者個人檔案: ${JSON.stringify(profile)}。請根據圖片分析，回傳 JSON 格式。` }
+          ],
+          config: {
+            systemInstruction: IMAGE_ANALYZER_PROMPT,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              required: ["type", "estimatedValue", "unit", "nutritionRough", "pointsEarned", "coachFeedback"],
+              properties: {
+                type: { type: Type.STRING, enum: ["diet", "exercise"] },
+                estimatedValue: { type: Type.INTEGER },
+                unit: { type: Type.STRING },
+                nutritionRough: {
+                  type: Type.OBJECT,
+                  required: ["carbs", "protein", "fat", "veg"],
+                  properties: {
+                    carbs: { type: Type.STRING },
+                    protein: { type: Type.STRING },
+                    fat: { type: Type.STRING },
+                    veg: { type: Type.STRING }
+                  }
+                },
+                proteinGrams: { type: Type.INTEGER },
+                pointsEarned: { type: Type.INTEGER },
+                coachFeedback: { type: Type.STRING }
+              }
+            }
+          }
         });
+
+        if (response && response.text) {
+          const result = JSON.parse(response.text || "{}");
+          return res.json(result);
+        }
+      } catch (realAiError: any) {
+        console.error("⚠️ Real Gemini Image Analyzer failed, falling back to mock analyzer:", realAiError);
       }
     }
 
-    // Call real Gemini model with image data
-    const part = base64ToPart(image, "image/jpeg");
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: [
-        part,
-        { text: `使用者個人檔案: ${JSON.stringify(profile)}。請根據圖片分析，回傳 JSON 格式。` }
-      ],
-      config: {
-        systemInstruction: IMAGE_ANALYZER_PROMPT,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          required: ["type", "estimatedValue", "unit", "nutritionRough", "pointsEarned", "coachFeedback"],
-          properties: {
-            type: { type: Type.STRING, enum: ["diet", "exercise"] },
-            estimatedValue: { type: Type.INTEGER },
-            unit: { type: Type.STRING },
-            nutritionRough: {
-              type: Type.OBJECT,
-              required: ["carbs", "protein", "fat", "veg"],
-              properties: {
-                carbs: { type: Type.STRING },
-                protein: { type: Type.STRING },
-                fat: { type: Type.STRING },
-                veg: { type: Type.STRING }
-              }
-            },
-            proteinGrams: { type: Type.INTEGER },
-            pointsEarned: { type: Type.INTEGER },
-            coachFeedback: { type: Type.STRING }
-          }
-        }
-      }
-    });
-
-    const result = JSON.parse(response.text || "{}");
-    res.json(result);
+    return res.json(getMockResponse());
   } catch (error: any) {
     console.error("Error in /api/coach/analyze-image:", error);
     res.status(500).json({ error: "分析圖片時發生錯誤。" });
