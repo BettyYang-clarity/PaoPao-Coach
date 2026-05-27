@@ -127,12 +127,12 @@ export default async function handler(req: Request, res: Response) {
         });
 
         try {
-          // 優先嘗試 gemini-3.5-flash
+          // 優先嘗試使用 gemini-3.5-flash 確保高水準飲食多模態圖像辨識品質
           response = await ai.models.generateContent(callParams("gemini-3.5-flash"));
         } catch (modelError: any) {
-          console.warn("⚠️ gemini-3.5-flash image analysis failed, trying gemini-2.5-flash fallback:", modelError);
-          // 次要嘗試 gemini-2.5-flash
-          response = await ai.models.generateContent(callParams("gemini-2.5-flash"));
+          console.warn("⚠️ gemini-3.5-flash image analysis failed, trying gemini-3.1-flash-lite fallback:", modelError);
+          // 次要嘗試使用極速 gemini-3.1-flash-lite 做安全降級
+          response = await ai.models.generateContent(callParams("gemini-3.1-flash-lite"));
         }
 
         if (response && response.text) {

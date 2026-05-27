@@ -112,19 +112,19 @@ ${message}`;
 
         let response;
         try {
-          // 優先嘗試使用 gemini-3.5-flash
+          // 優先嘗試使用極速 gemini-3.1-flash-lite 確保文字聊天毫秒級零延遲
           response = await ai.models.generateContent({
-            model: "gemini-3.5-flash",
+            model: "gemini-3.1-flash-lite",
             contents: prompt,
             config: {
               systemInstruction: COACH_SYSTEM_PROMPT
             }
           });
         } catch (modelError: any) {
-          console.warn("⚠️ gemini-3.5-flash failed, trying gemini-2.5-flash fallback:", modelError);
-          // 次要嘗試使用 gemini-2.5-flash
+          console.warn("⚠️ gemini-3.1-flash-lite failed, trying gemini-3.5-flash fallback:", modelError);
+          // 次要嘗試使用 gemini-3.5-flash
           response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3.5-flash",
             contents: prompt,
             config: {
               systemInstruction: COACH_SYSTEM_PROMPT
