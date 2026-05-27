@@ -6,19 +6,22 @@
 import React, { useState, useRef, useEffect } from "react";
 import { ChatMessage, UserProfile, WellnessRecord } from "../types";
 import { Send, Image, Loader2, Sparkles, AlertCircle } from "lucide-react";
+import { compressImage } from "../lib/imageCompress";
 
 interface CoachChatProps {
   messages: ChatMessage[];
   profile: UserProfile;
   onSendMessage: (text: string) => Promise<void>;
   onImageAnalysisResult: (record: WellnessRecord) => void;
+  onClearChat?: () => void;
 }
 
 export default function CoachChat({
   messages,
   profile,
   onSendMessage,
-  onImageAnalysisResult
+  onImageAnalysisResult,
+  onClearChat
 }: CoachChatProps) {
   const [inputText, setInputText] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -78,7 +81,9 @@ export default function CoachChat({
     setUploadError(null);
 
     try {
-      const { base64, mimeType } = await fileToBase64Mime(file);
+      // Utilizing high efficiency compressor with automatic client-side canvas resizing 
+      // which is extremely robust against iOS Safari RAM allocation rules and payload limits.
+      const { base64, mimeType } = await compressImage(file);
 
       // Call our server-side image analysis model
       const res = await fetch("/api/coach/analyze-image", {
@@ -149,41 +154,41 @@ export default function CoachChat({
   return (
     <div
       id="chat-panel"
-      className={`p-6 bg-white border rounded-3xl shadow-sm flex flex-col h-[580px] transition-all duration-300 ${
-        isDragging ? "ring-2 ring-indigo-500 bg-indigo-50/10 border-indigo-400" : "border-slate-100"
+      className={`flex flex-col h-full min-h-0 w-full transition-all duration-300 relative ${
+        isDragging ? "ring-2 ring-emerald-500 bg-emerald-50/10 rounded-2xl" : ""
       }`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <span className="w-9 h-9 bg-linear-to-tr from-indigo-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-xs">
-              🙋‍♂️
-            </span>
-            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full" />
-          </div>
-          <div>
-            <h3 className="font-sans text-xs font-bold text-slate-800 flex items-center gap-1">
-              AI 陪跑教練
-              <span className="text-[9px] px-1.5 py-0.5 bg-indigo-50 text-indigo-700 font-mono rounded-md">
-                100% 同理心人格設定
-              </span>
-            </h3>
-            <span className="text-[9px] text-slate-400 font-sans tracking-wide">
-              不指責、不恐嚇、只有加分與陪伴 🌱
-            </span>
-          </div>
+      {/* Header with controls - extremely clean and compact */}
+      <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3 flex-shrink-0">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-xs shrink-0">🍀</span>
+          <span className="text-[10px] font-medium text-slate-500 truncate" title="PaoPao教練學理指引支援">
+            PaoPao教練 • 哈佛餐盤與國健署指引
+          </span>
         </div>
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="text-slate-400 hover:text-indigo-600 px-2.5 py-1.5 bg-slate-50 hover:bg-indigo-50 border border-slate-100/50 rounded-xl text-[10px] font-sans font-semibold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
-        >
-          <Image size={11} />
-          拍照辨職
-        </button>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {onClearChat && (
+            <button
+              type="button"
+              onClick={onClearChat}
+              className="text-amber-600 hover:text-amber-800 px-2 py-1 bg-amber-50 hover:bg-amber-100/60 border border-amber-100 rounded-lg text-[10px] font-sans font-semibold transition-all cursor-pointer flex items-center gap-0.5"
+              title="重置對談歷史"
+            >
+              🧹 重置對談
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="text-emerald-700 hover:text-emerald-900 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100/60 rounded-lg text-[10px] font-sans font-semibold transition-all cursor-pointer flex items-center gap-1"
+          >
+            <Image size={10} className="text-emerald-600" />
+            飲食拍照
+          </button>
+        </div>
         <input
           type="file"
           accept="image/*"
@@ -207,9 +212,9 @@ export default function CoachChat({
               {/* Profile/Bot Icon */}
               <div className="flex-shrink-0">
                 <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs shadow-3xs border ${
-                  isBot ? "bg-indigo-50 text-indigo-600 border-indigo-100/20" : "bg-teal-50 text-teal-600 border-teal-100/20"
+                  isBot ? "bg-emerald-50 text-emerald-600 border-emerald-100/20" : "bg-teal-50 text-teal-600 border-teal-100/20"
                 }`}>
-                  {isBot ? "🙋‍♂️" : "🏃‍♀️"}
+                  {isBot ? "🥗" : "🏃‍♀️"}
                 </span>
               </div>
 
@@ -219,7 +224,7 @@ export default function CoachChat({
                   className={`p-3.5 rounded-2xl font-sans text-xs leading-relaxed whitespace-pre-wrap ${
                     isBot
                       ? "bg-slate-50 border border-slate-100/80 text-slate-700 rounded-tl-xs"
-                      : "bg-indigo-600 text-white rounded-tr-xs"
+                      : "bg-emerald-600 text-white rounded-tr-xs"
                   }`}
                 >
                   {/* Image attachment preview if present */}
@@ -244,11 +249,11 @@ export default function CoachChat({
         {isSending && (
           <div className="flex items-start gap-2.5 max-w-[80%] self-start animate-pulse">
             <span className="w-7 h-7 rounded-full bg-slate-50 border border-slate-100/30 flex items-center justify-center text-xs">
-              🙋‍♂️
+              🥗
             </span>
             <div className="p-3 bg-slate-50 border border-slate-100/50 rounded-2xl rounded-tl-xs flex items-center gap-1.5 text-xs text-slate-400 font-sans">
-              <Loader2 size={12} className="animate-spin text-indigo-500" />
-              正在聆聽夥伴、幫你注入微習慣加持中...
+              <Loader2 size={12} className="animate-spin text-emerald-500" />
+              正在為您查閱大眾營養學與運動指引庫...
             </div>
           </div>
         )}
@@ -258,9 +263,9 @@ export default function CoachChat({
 
       {/* Image drag-and-drop backdrop warning overlay */}
       {isDragging && (
-        <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-2xl text-center text-indigo-700 text-[10px] font-sans font-bold flex items-center justify-center gap-1 mb-2">
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-center text-emerald-700 text-[10px] font-sans font-bold flex items-center justify-center gap-1 mb-2">
           <Sparkles size={12} className="animate-bounce" />
-          鬆開手！教練會自動拍照記錄與計算並給你超溫和加分碎碎念～
+          鬆開手！PaoPao教練會自動拍照解讀成分並給你溫和加分建議喔～
         </div>
       )}
 
@@ -279,18 +284,18 @@ export default function CoachChat({
       <form onSubmit={handleSendText} className="flex gap-2">
         <input
           type="text"
-          className="flex-1 px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl font-sans text-xs text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-100/50 focus:bg-white"
+          className="flex-1 px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl font-sans text-xs text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-100/50 focus:bg-white"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
-          placeholder={isSending ? "等我幾秒分析照片喔..." : "跟教練講講心事、紀錄飲食，或拍下點心照片上傳！"}
+          placeholder={isSending ? "等我幾秒分析照片喔..." : "輸入食物名稱(例：地瓜/香蕉)、運動項目(例：快走)或諮詢大眾健康方針..."}
           disabled={isSending}
         />
         <button
           type="submit"
           disabled={isSending || !inputText.trim()}
-          className="px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl cursor-pointer disabled:opacity-50 transition-all active:scale-[0.96] flex items-center justify-center shadow-xs"
+          className="px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl cursor-pointer disabled:opacity-50 transition-all active:scale-[0.96] flex items-center justify-center shadow-xs flex-shrink-0"
         >
-          <Send size={14} />
+          <Send size={14} className="flex-shrink-0" />
         </button>
       </form>
     </div>

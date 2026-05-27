@@ -11,8 +11,12 @@ export interface UserProfile {
   age?: number;
   activityLevel?: 'sedentary' | 'lightly_active' | 'moderately_active' | 'very_active';
   dailyCalorieTarget: number;
+  dailyExerciseTarget: number; // minutes
+  dailySleepTarget: number; // hours
   customGoal: string;
   avatarId: string;
+  dailyReminderEnabled?: boolean;
+  dailyReminderTime?: string; // e.g. "09:00"
   selectedGuidelines?: string[]; // Keep for compatibility
   selectedGoals?: string[]; // Selected Goal IDs from the 7 options
   selectedHabits?: Array<{ habitId: string; level: 1 | 2 | 3 }>; // Selected Atomic Habits with user Chosen Levels (1-3)
@@ -21,15 +25,18 @@ export interface UserProfile {
 export interface WellnessRecord {
   id: string;
   timestamp: string; // ISO string
-  type: 'diet' | 'exercise' | 'sleep' | 'mood' | 'water';
+  type: 'diet' | 'exercise' | 'sleep' | 'mood' | 'water' | 'weight';
   title: string;
   imageUrl?: string;
   estimatedValue?: number; // e.g., kcal, minutes, hours, or ml
-  unit: string; // e.g., "大卡", "分鐘", "小時", "毫升"
+  unit: string; // e.g., "大卡", "分鐘", "小時", "毫升", "公斤"
   moodScore?: number; // 1-5
   notes?: string;
   coachFeedback: string;
   pointsEarned: number;
+  proteinGrams?: number; // Optional protein tracking in grams
+  caloriesBurned?: number; // Optional calories burned in kcal (specifically for exercise type)
+  bodyFatPercent?: number; // Optional body fat portion trackers
   nutritionRough?: {
     carbs?: string; // e.g. "適中", "極少"
     protein?: string;

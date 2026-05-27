@@ -82,7 +82,9 @@ export default function HabitBoard({
   // Helper to parse busy titles into a clean literal todo action
   const parseTaskTitle = (title: string) => {
     let text = title.split(" ➔ ")[0]; // remove trailing guide line if exists
-    let categoryLabel = "";
+    let goalName = "習慣";
+    let habitName = "";
+    let levelStr = "Lv1";
     let cleanText = text;
 
     if (text.startsWith("【") && text.includes("】")) {
@@ -92,17 +94,41 @@ export default function HabitBoard({
 
       const parts = bracketContent.split("｜");
       if (parts.length >= 2) {
-        // Strip out levels and difficulty suffixes for clean visualization
-        categoryLabel = parts[1].trim().replace(/\s+Lv\d+(\s+超容易|\s+普通|\s+進階)?$/, "");
+        goalName = parts[0].trim();
+        const secondPart = parts[1].trim();
+        const levelMatch = secondPart.match(/Lv\d+/);
+        if (levelMatch) {
+          levelStr = levelMatch[0];
+          habitName = secondPart.replace(/\s+Lv\d+(\s+超容易|\s+普通|\s+進階)?$/, "").trim();
+        } else {
+          habitName = secondPart;
+        }
       } else {
-        categoryLabel = parts[0].trim();
+        habitName = parts[0].trim();
       }
     }
 
-    // Strip leading emojis to keep visual noise minimal
-    cleanText = cleanText.replace(/^[\u2000-\u32FF\ud83c-\ud83d\ude00-\ude4f\ude80-\udeff\ud83e\udd00-\uddff]\s*/g, "").trim();
+    // Strip leading emojis and symbols (including broken surrogate pairs) to keep visual noise minimal
+    cleanText = cleanText.replace(/^[^\u4e00-\u9fa5a-zA-Z0-9\s（(「『]+/g, "").trim();
 
-    return { categoryLabel, cleanText };
+    return { goalName, habitName: habitName || "原子微習慣", levelStr, cleanText };
+  };
+
+  const getCategoryTheme = (category: string) => {
+    switch (category) {
+      case "diet":
+        return { bg: "bg-emerald-50 text-emerald-700 border-emerald-250", label: "🥗 飲食" };
+      case "exercise":
+        return { bg: "bg-amber-50 text-amber-700 border-amber-250", label: "🏃 運動" };
+      case "sleep":
+        return { bg: "bg-indigo-50 text-indigo-700 border-indigo-250", label: "🛌 睡眠" };
+      case "mood":
+        return { bg: "bg-rose-50 text-rose-700 border-rose-250", label: "🌸 心理" };
+      case "water":
+        return { bg: "bg-sky-50 text-sky-700 border-sky-250", label: "🥛 補水" };
+      default:
+        return { bg: "bg-gray-50 text-gray-700 border-gray-250", label: "🌱 其他" };
+    }
   };
 
   // Static draw offline/mock generator following the level design logic
@@ -230,124 +256,142 @@ export default function HabitBoard({
         </button>
       </div>
 
-      {/* Task List (Clean minimalist layout) */}
-      <div className="flex flex-col gap-3">
-        {tasks.length === 0 ? (
-          <div className="text-center py-6 text-brand-ash font-sans text-xs bg-brand-cream rounded-2xl border border-dashed border-brand-border px-4">
-            🌿 待辦任務空空如也。請點擊「重置待辦清單」載入挑戰。
-          </div>
-        ) : (
-          tasks.map((task) => {
-            const isCompleted = task.completed;
-            const { categoryLabel, cleanText } = parseTaskTitle(task.title);
-            const isExpanded = expandedTaskId === task.id;
-
-            return (
-              <div
-                key={task.id}
-                className={`relative p-3 border rounded-2xl flex flex-col gap-2.5 transition-all ${
-                  isCompleted
-                    ? "bg-[#FAF9F6]/60 border-brand-border-light/60 text-brand-ash/60"
-                    : "bg-white border-brand-border hover:border-brand-green/30 shadow-4xs"
-                }`}
-              >
-                {/* Horizontal summary view */}
-                <div className="flex items-start gap-3">
-                  {/* Completion Check Box */}
-                  <button
-                    type="button"
-                    onClick={() => onToggleTask(task.id)}
-                    className="mt-0.5 text-brand-ash hover:text-brand-green flex-shrink-0 cursor-pointer transition-all focus:outline-hidden"
-                  >
-                    {isCompleted ? (
-                      <CheckCircle2 size={16} className="text-brand-green fill-brand-green/5" />
-                    ) : (
-                      <Circle size={16} className="hover:scale-105" />
-                    )}
-                  </button>
-
-                  {/* Clean literal todo title */}
-                  <div className="flex-1 min-w-0 pr-2">
-                    <p className={`font-sans text-xs font-bold text-brand-text leading-snug ${isCompleted ? 'text-brand-ash/60 line-through font-normal' : ''}`}>
-                      {categoryLabel && <span className="text-brand-green mr-1.5 font-bold">[{categoryLabel}]</span>}
-                      {cleanText}
-                    </p>
-                  </div>
-
-                  {/* Side Badges & Toggle */}
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span className="text-[9px] font-mono font-bold text-brand-green px-1.5 py-0.5 bg-brand-cream border border-brand-border-light rounded-md">
-                      +{task.points} pts
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}
-                      className={`text-brand-ash hover:text-brand-muted cursor-pointer p-0.5 rounded transition-all ${
-                        isExpanded ? "bg-brand-cream text-brand-green" : ""
-                      }`}
-                      title="查看實際執行步驟與習慣學理說明"
-                    >
-                      <HelpCircle size={14} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Optional neutral actionable steps & explanation (Collapsed by default, zero clutter) */}
-                {isExpanded && (
-                  <div className="ml-7 p-3 bg-brand-cream/60 border border-brand-border-light/60 rounded-xl text-[10.5px] leading-relaxed text-brand-text animate-fade-in flex flex-col gap-1.5 font-sans">
-                    <div>
-                      <span className="font-bold text-brand-green">🎯 物理微行動步驟：</span>
-                      <p className="inline text-brand-text font-medium">{getActionableGuide(task.id, task.category)}</p>
-                    </div>
-                    {task.suggestion && (
-                      <div className="border-t border-brand-border-light/40 pt-1.5 mt-0.5 text-[10px] text-brand-muted">
-                        <span className="font-bold">💡 習慣科學原理：</span>
-                        <p className="inline">{task.suggestion}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })
-        )}
-      </div>
-
-      {/* Custom Add Feature (Slimer & simple) */}
-      <form onSubmit={handleAddCustomTask} className="border-t border-brand-border-light pt-3 mt-1 flex flex-col gap-2">
+      {/* Custom Add Feature (Slimer & simple) - MOVED TO THE TOP AS REQUESTED */}
+      <form onSubmit={handleAddCustomTask} className="bg-brand-cream/15 p-3.5 border border-brand-border/60 rounded-2xl flex flex-col gap-2 shadow-4xs">
         <span className="text-[10px] font-bold text-brand-muted flex items-center gap-1">
           <Heart size={11} className="text-brand-green" />
           自訂一項今日無痛小待辦：
         </span>
 
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="text"
-            className="flex-1 px-3 py-1.5 bg-brand-cream border border-brand-border rounded-xl font-sans text-xs text-brand-text focus:outline-hidden focus:ring-1 focus:ring-brand-green/30 focus:bg-white"
+            className="flex-1 min-w-0 px-3 py-1.5 bg-brand-cream border border-brand-border rounded-xl font-sans text-xs text-brand-text focus:outline-hidden focus:ring-1 focus:ring-brand-green/30 focus:bg-white"
             value={customTitle}
             onChange={(e) => setCustomTitle(e.target.value)}
-            placeholder="例如：睡前喝水 200ml / 散步 5 分鐘"
+            placeholder="例如：睡前拉筋 15 秒 🌿"
           />
-          <select
-            className="px-2 bg-brand-cream border border-brand-border rounded-xl font-sans text-[10.5px] text-brand-muted cursor-pointer"
-            value={customCategory}
-            onChange={(e) => setCustomCategory(e.target.value as MicroTask["category"])}
-          >
-            <option value="diet">飲食 🥗</option>
-            <option value="water">補水 💧</option>
-            <option value="exercise">運動 🏃</option>
-            <option value="sleep">睡眠 😴</option>
-            <option value="mood">心靈 🌸</option>
-          </select>
-          <button
-            type="submit"
-            className="p-1.5 bg-brand-beige hover:bg-brand-sand text-brand-green border border-brand-border rounded-xl cursor-pointer shadow-3xs transition-all flex-shrink-0 active:scale-95 flex items-center justify-center"
-            title="添加自主約定"
-          >
-            <Plus size={14} />
-          </button>
+          <div className="flex gap-2 sm:flex-shrink-0">
+            <select
+              className="flex-1 sm:flex-initial px-2 py-1.5 bg-brand-cream border border-brand-border rounded-xl font-sans text-xs text-brand-muted cursor-pointer"
+              value={customCategory}
+              onChange={(e) => setCustomCategory(e.target.value as MicroTask["category"])}
+            >
+              <option value="diet">飲食 🥗</option>
+              <option value="water">補水 💧</option>
+              <option value="exercise">運動 🏃</option>
+              <option value="sleep">睡眠 😴</option>
+              <option value="mood">心靈 🌸</option>
+            </select>
+            <button
+              type="submit"
+              className="px-3.5 py-1.5 bg-brand-beige hover:bg-brand-sand text-brand-green border border-brand-border rounded-xl cursor-pointer shadow-3xs transition-all flex-shrink-0 active:scale-95 flex items-center justify-center gap-1 font-bold font-sans text-xs"
+              title="添加自主約定"
+            >
+              <Plus size={14} /> 新增
+            </button>
+          </div>
         </div>
       </form>
+
+      {/* Task List (Clean minimalist layout) */}
+      <div className="flex flex-col gap-3">
+        {tasks.length === 0 ? (
+          <div className="text-center py-6 text-brand-ash font-sans text-xs bg-brand-cream rounded-2xl border border-dashed border-brand-border px-4 font-bold">
+            🌿 待辦任務空空如也。請點擊「重置待辦清單」載入挑戰。
+          </div>
+        ) : (
+          <div className="max-h-[310px] overflow-y-auto pr-1 flex flex-col gap-2.5 scrollbar-thin">
+            {tasks.map((task) => {
+              const isCompleted = task.completed;
+              const { goalName, habitName, levelStr, cleanText } = parseTaskTitle(task.title);
+              const isExpanded = expandedTaskId === task.id;
+              const categoryTheme = getCategoryTheme(task.category);
+
+              return (
+                <div
+                  key={task.id}
+                  className={`p-3.5 border rounded-2xl flex flex-col gap-2.5 transition-all ${
+                    isCompleted
+                      ? "bg-[#FAF9F6]/60 border-brand-border-light/60 text-brand-ash/60"
+                      : "bg-white border-brand-border hover:border-brand-green/30 shadow-4xs"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    {/* Completion Check Box */}
+                    <button
+                      type="button"
+                      onClick={() => onToggleTask(task.id)}
+                      className="text-brand-ash hover:text-brand-green flex-shrink-0 cursor-pointer transition-all focus:outline-hidden mt-0.5"
+                    >
+                      {isCompleted ? (
+                        <CheckCircle2 size={18} className="text-brand-green fill-brand-green/5" />
+                      ) : (
+                        <Circle size={18} className="hover:scale-105" />
+                      )}
+                    </button>
+
+                    {/* Right content column */}
+                    <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                      {/* Top Header of the Task Item */}
+                      <div className="flex items-center justify-between gap-2">
+                        {/* Title with exact metadata */}
+                        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                          <span className={`text-[10px] font-bold ${isCompleted ? 'text-brand-ash/50' : 'text-[#5C564A]'}`}>
+                            {habitName}
+                          </span>
+                          <span className={`text-[8px] font-mono px-1 rounded flex-shrink-0 ${isCompleted ? 'bg-brand-ash/20 text-brand-ash/60' : 'bg-brand-green text-white'}`}>
+                            {levelStr}
+                          </span>
+                          <span className="text-[9px] text-[#A39B8D] truncate">({goalName})</span>
+                        </div>
+
+                        {/* Right action block */}
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <span className={`text-[8.5px] font-sans font-bold px-1.5 py-0.5 bg-white border rounded leading-none ${isCompleted ? 'opacity-50' : ''} ${categoryTheme.bg}`}>
+                            {categoryTheme.label}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}
+                            className={`text-xs cursor-pointer p-1 rounded-lg border border-brand-border-light/40 shadow-4xs transition-all hover:bg-brand-cream active:scale-95 flex items-center justify-center ${
+                              isExpanded ? "bg-brand-cream/80" : ""
+                            }`}
+                            title="物理微行動步驟與學理分析"
+                          >
+                            💡
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 👉 行動目標: Positioned fully underneath the header to maximize space usage */}
+                      <p className={`font-sans text-[11.5px] leading-relaxed mt-0.5 ${isCompleted ? 'text-brand-ash/60 line-through font-normal' : 'text-brand-text font-bold'}`}>
+                        👉 行動目標：{cleanText}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Expandable guide */}
+                  {isExpanded && (
+                    <div className="p-3 bg-brand-cream/65 border border-brand-border-light/60 rounded-xl text-[10.5px] leading-relaxed text-brand-text animate-fade-in flex flex-col gap-1.5 font-sans">
+                      <div>
+                        <span className="font-bold text-brand-green">🎯 物理微行動步驟：</span>
+                        <p className="inline text-brand-text font-medium">{getActionableGuide(task.id, task.category)}</p>
+                      </div>
+                      {task.suggestion && (
+                        <div className="border-t border-brand-border-light/40 pt-1.5 mt-0.5 text-[10px] text-[#80796B]">
+                          <span className="font-bold">🧪 習慣學理：</span>
+                          <p className="inline">{task.suggestion}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -30,6 +30,10 @@ export default function ProfileForm({ profile, onSave }: ProfileFormProps) {
     ...profile,
     age: profile.age || 28,
     activityLevel: profile.activityLevel || "lightly_active",
+    dailyExerciseTarget: profile.dailyExerciseTarget || 30,
+    dailySleepTarget: profile.dailySleepTarget || 7,
+    dailyReminderEnabled: profile.dailyReminderEnabled ?? true,
+    dailyReminderTime: profile.dailyReminderTime || "09:00",
     selectedGoals: profile.selectedGoals || ["weight_loss", "general_health"],
     selectedHabits: profile.selectedHabits || [
       { habitId: "wl_protein_first", level: 1 },
@@ -49,6 +53,10 @@ export default function ProfileForm({ profile, onSave }: ProfileFormProps) {
       ...profile,
       age: profile.age || 28,
       activityLevel: profile.activityLevel || "lightly_active",
+      dailyExerciseTarget: profile.dailyExerciseTarget || 30,
+      dailySleepTarget: profile.dailySleepTarget || 7,
+      dailyReminderEnabled: profile.dailyReminderEnabled ?? true,
+      dailyReminderTime: profile.dailyReminderTime || "09:00",
       selectedGoals: profile.selectedGoals || ["weight_loss", "general_health"],
       selectedHabits: profile.selectedHabits || [
         { habitId: "wl_protein_first", level: 1 },
@@ -255,44 +263,26 @@ export default function ProfileForm({ profile, onSave }: ProfileFormProps) {
 
   return (
     <div id="settings-interior" className="flex flex-col gap-5 w-full">
-      {/* Settings Sub-Tab Navigation Switcher */}
-      <div className="flex border-b border-brand-border-light pb-1 gap-1.5">
-        <button
-          type="button"
-          id="setting-subtab-summary"
-          onClick={() => setActiveSubTab('summary')}
-          className={`flex-1 py-2 text-xs font-sans font-bold tracking-wider relative flex items-center justify-center gap-1.5 transition-all text-center rounded-lg cursor-pointer ${
-            activeSubTab === 'summary'
-              ? "bg-brand-green/10 text-brand-green border-b border-brand-green font-extrabold"
-              : "text-brand-muted hover:text-brand-text hover:bg-brand-plain/10"
-          }`}
-        >
-          📋 健康總結報告
-        </button>
-        <button
-          type="button"
-          id="setting-subtab-plan"
-          onClick={() => setActiveSubTab('plan')}
-          className={`flex-1 py-1 px-2 text-xs font-sans font-bold tracking-wider relative flex items-center justify-center gap-1.5 transition-all text-center rounded-lg cursor-pointer ${
-            activeSubTab === 'plan'
-              ? "bg-brand-green/10 text-brand-green border-b border-brand-green font-extrabold"
-              : "text-brand-muted hover:text-brand-text hover:bg-brand-plain/10"
-          }`}
-        >
-          ⚙️ 修改健康計畫
-        </button>
-        <button
-          type="button"
-          id="setting-subtab-habits"
-          onClick={() => setActiveSubTab('habits')}
-          className={`flex-1 py-1 px-2 text-xs font-sans font-bold tracking-wider relative flex items-center justify-center gap-1.5 transition-all text-center rounded-lg cursor-pointer ${
-            activeSubTab === 'habits'
-              ? "bg-brand-green/10 text-brand-green border-b border-brand-green font-extrabold"
-              : "text-brand-muted hover:text-brand-text hover:bg-brand-plain/10"
-          }`}
-        >
-          ⚡ 修改原子微行動
-        </button>
+      {/* Settings Header with Back Button (Removed the right subtabs switcher) */}
+      <div className="flex border-b border-brand-border-light pb-2.5 items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm">📋</span>
+          <h3 className="font-sans text-xs font-extrabold uppercase tracking-widest text-[#5C564A]">
+            {activeSubTab === 'summary' && "個人健康總結與設定"}
+            {activeSubTab === 'plan' && "修改健康計畫設定"}
+            {activeSubTab === 'habits' && "修改原子微行動隨機化難度"}
+          </h3>
+        </div>
+        
+        {activeSubTab !== 'summary' && (
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('summary')}
+            className="px-2.5 py-1 text-[10px] font-bold text-brand-muted hover:text-brand-text bg-brand-cream hover:bg-brand-beige border border-brand-border rounded-lg transition-all cursor-pointer flex items-center gap-1"
+          >
+            ← 返回健康總結
+          </button>
+        )}
       </div>
 
       {/* RENDER SUMMARIZED SUMMARY OR EDITORS */}
@@ -306,6 +296,33 @@ export default function ProfileForm({ profile, onSave }: ProfileFormProps) {
             <p className="text-[10px] text-brand-muted leading-relaxed">
               親愛的 {formData.name || "夥伴"}，以下為您客製化解構的健康計畫與微行動難度。這裡絕不設立繁雜嚴苛的規則，記錄與實踐一秒就值得為自己喝采：
             </p>
+          </div>
+
+          {/* Core Plan Highlights / Focus Points Synthesis */}
+          <div className="p-4 bg-emerald-50/40 border border-emerald-500/20 rounded-2xl flex flex-col gap-3 shadow-3xs">
+            <h5 className="text-[11px] font-sans font-bold text-emerald-850 flex items-center gap-1 border-b border-emerald-500/10 pb-1.5">
+              ⭐ 【您的三大核心健康計畫重點】
+            </h5>
+            <ul className="text-[10px] text-emerald-900/95 space-y-2 font-sans list-none pl-0">
+              <li className="flex items-start gap-1.5">
+                <span className="text-emerald-700 font-bold flex-shrink-0">① 精準每日熱量：</span>
+                <div>
+                  設定為 <strong className="font-extrabold text-emerald-800">{formData.dailyCalorieTarget || currentCalc.tdee} kcal</strong>，已根據 TDEE 能耗精密計算，作為您的日常卡路里防線。
+                </div>
+              </li>
+              <li className="flex items-start gap-1.5">
+                <span className="text-emerald-700 font-bold flex-shrink-0">② 基礎水分與作息：</span>
+                <div>
+                  依您的體脂體格精密計算今日補水基礎 <strong className="font-extrabold text-emerald-800">{waterTarget} ml</strong>、中度活動時間 <strong className="font-extrabold text-emerald-800">{formData.dailyExerciseTarget || 30} 分鐘</strong> 與黃金睡眠 <strong className="font-extrabold text-emerald-800">{formData.dailySleepTarget || 7} 小時</strong>。
+                </div>
+              </li>
+              <li className="flex items-start gap-1.5">
+                <span className="text-emerald-700 font-bold flex-shrink-0">③ 原子行動方針：</span>
+                <div>
+                  共綁定 <strong className="font-extrabold text-emerald-800">{selectedGoalsList.length}</strong> 個核心健康方向，並完美對接啟用 <strong className="font-extrabold text-brand-green">{selectedHabitsList.length}</strong> 個客製微行動，難度極低，無痛養成一輩子的習慣。
+                </div>
+              </li>
+            </ul>
           </div>
 
           {/* 1. Basic Physio Profile */}
@@ -332,18 +349,40 @@ export default function ProfileForm({ profile, onSave }: ProfileFormProps) {
               </div>
             </div>
 
-            <div className="p-3 bg-brand-beige border border-brand-border/60 rounded-xl flex items-start gap-2">
-              <span className="text-xs text-brand-green mt-0.5">🎯</span>
-              <div>
-                <span className="text-[10px] font-bold text-[#5C564A]">當前自訂每日熱量護城河：</span>
-                <strong className="text-xs font-mono text-brand-green ml-1">{formData.dailyCalorieTarget || currentCalc.tdee} kcal / 天</strong>
-                <span className="text-[9.5px] text-brand-muted block mt-0.5">
-                  活動加權級別：{
-                    formData.activityLevel === "sedentary" ? "久坐常態型 (很少運動)" :
-                    formData.activityLevel === "lightly_active" ? "輕度活動型 (常站立/走動)" :
-                    formData.activityLevel === "moderately_active" ? "中度操練型 (規律鍛鍊)" : "高度活躍型 (密集體能工作)"
-                  }
-                </span>
+            <div className="p-4 bg-brand-beige border border-brand-border/60 rounded-xl flex flex-col gap-2.5">
+              <div className="flex items-start gap-2">
+                <span className="text-xs text-brand-green mt-0.5">🎯</span>
+                <div>
+                  <span className="text-[10px] font-bold text-[#5C564A]">當前自訂每日習慣目標：</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
+                    <div className="px-2.5 py-1.5 bg-white border border-brand-border/60 rounded-lg text-center shadow-4xs">
+                      <span className="block text-[8px] font-bold text-brand-muted uppercase">日常熱量防護</span>
+                      <strong className="text-xs font-mono text-brand-green font-bold block mt-0.5">{formData.dailyCalorieTarget || currentCalc.tdee} kcal</strong>
+                    </div>
+                    <div className="px-2.5 py-1.5 bg-white border border-brand-border/60 rounded-lg text-center shadow-4xs">
+                      <span className="block text-[8px] font-bold text-brand-muted uppercase">累積身體活動</span>
+                      <strong className="text-xs font-mono text-brand-green font-bold block mt-0.5">{formData.dailyExerciseTarget || 30} 分鐘</strong>
+                    </div>
+                    <div className="px-2.5 py-1.5 bg-white border border-brand-border/60 rounded-lg text-center shadow-4xs">
+                      <span className="block text-[8px] font-bold text-brand-muted uppercase">昨晚睡眠時間</span>
+                      <strong className="text-xs font-mono text-brand-green font-bold block mt-0.5">{formData.dailySleepTarget || 7} 小時</strong>
+                    </div>
+                  </div>
+                  <span className="text-[9.5px] text-brand-muted block mt-2 border-t border-[#E5E0D5] pt-1.5">
+                    活動加權級別：{
+                      formData.activityLevel === "sedentary" ? "久坐常態型 (很少運動)" :
+                      formData.activityLevel === "lightly_active" ? "輕度活動型 (常站立/走動)" :
+                      formData.activityLevel === "moderately_active" ? "中度操練型 (規律鍛鍊)" : "高度活躍型 (密集體能工作)"
+                    }
+                  </span>
+                  <span className="text-[9.5px] text-brand-muted block mt-1.5 pt-1.5 border-t border-dashed border-[#E5E0D5] flex items-center gap-1">
+                    🔔 每日預約提醒更新：{
+                      (formData.dailyReminderEnabled ?? true) 
+                        ? `已預定 (每天 ${formData.dailyReminderTime || "09:00"}) 💡` 
+                        : "目前關閉"
+                    }
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -621,24 +660,86 @@ export default function ProfileForm({ profile, onSave }: ProfileFormProps) {
                 </button>
               </div>
 
-              <div className="flex items-center gap-1.5 mt-2.5 border-t border-brand-cream/80 pt-2 bg-brand-cream/20 px-2 rounded-lg">
-                <span className="text-[10px] text-brand-muted">自訂目標熱量防護線：</span>
-                <input
-                  type="number"
-                  className="w-20 px-2 py-0.5 border border-brand-border rounded-lg text-center text-xs font-mono font-bold text-brand-green"
-                  value={formData.dailyCalorieTarget}
-                  onChange={(e) => setFormData(prev => ({ ...prev, dailyCalorieTarget: Number(e.target.value) }))}
-                />
-                <span className="text-[10px] text-brand-muted">kcal / 天</span>
+              <div className="mt-3.5 border-t border-brand-cream/80 pt-3 flex flex-col gap-2.5 bg-brand-cream/10 p-2.5 rounded-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                  <span className="text-[10px] font-medium text-brand-muted">🎯 自訂目標熱量防護線：</span>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      className="w-20 px-2 py-0.5 border border-brand-border rounded-lg text-center text-xs font-mono font-bold text-brand-green bg-white"
+                      value={formData.dailyCalorieTarget}
+                      onChange={(e) => setFormData(prev => ({ ...prev, dailyCalorieTarget: Number(e.target.value) }))}
+                    />
+                    <span className="text-[10px] text-brand-muted">kcal / 天</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-t border-dashed border-brand-border-light pt-2.5">
+                  <span className="text-[10px] font-medium text-brand-muted">🏃 自訂每日運動目標：</span>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      className="w-20 px-2 py-0.5 border border-brand-border rounded-lg text-center text-xs font-mono font-bold text-brand-green bg-white"
+                      value={formData.dailyExerciseTarget}
+                      onChange={(e) => setFormData(prev => ({ ...prev, dailyExerciseTarget: Number(e.target.value) || 0 }))}
+                    />
+                    <span className="text-[10px] text-brand-muted">分鐘 / 天</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-t border-dashed border-brand-border-light pt-2.5">
+                  <span className="text-[10px] font-medium text-brand-muted">💤 自訂每日睡眠目標：</span>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      className="w-20 px-2 py-0.5 border border-brand-border rounded-lg text-center text-xs font-mono font-bold text-brand-green bg-white"
+                      value={formData.dailySleepTarget || 0}
+                      onChange={(e) => setFormData(prev => ({ ...prev, dailySleepTarget: Number(e.target.value) || 0 }))}
+                    />
+                    <span className="text-[10px] text-brand-muted">小時 / 天</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-t border-dashed border-brand-border-light pt-2.5">
+                  <span className="text-[10px] font-semibold text-brand-darkgreen flex items-center gap-1">🔔 每日定時提醒更新：</span>
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-1 cursor-pointer text-[10px] text-brand-text font-bold">
+                      <input
+                        type="checkbox"
+                        className="rounded border-brand-border text-brand-green focus:ring-brand-green/30 h-3.5 w-3.5 cursor-pointer"
+                        checked={formData.dailyReminderEnabled ?? true}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setFormData(prev => ({ ...prev, dailyReminderEnabled: checked }));
+                          if (checked && "Notification" in window) {
+                            Notification.requestPermission();
+                          }
+                        }}
+                      />
+                      啟用提醒
+                    </label>
+                    <input
+                      type="time"
+                      className="px-2 py-0.5 border border-brand-border rounded-lg text-center text-xs font-mono font-bold text-brand-green bg-white cursor-pointer"
+                      value={formData.dailyReminderTime || "09:00"}
+                      onChange={(e) => setFormData(prev => ({ ...prev, dailyReminderTime: e.target.value }))}
+                      disabled={formData.dailyReminderEnabled === false}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Submittable form actions */}
           <div className="flex items-center justify-between border-t border-brand-border-light pt-4 mt-1 bg-white/30 rounded-xl">
-            <span className="text-[10px] text-brand-ash font-medium italic">
-              * 目前選中大目標: {(formData.selectedGoals || []).length} 個
-            </span>
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('summary')}
+              className="px-4 py-2 bg-brand-cream hover:bg-[#F3EFE6] text-brand-muted hover:text-brand-text font-sans text-xs font-semibold rounded-xl border border-brand-border cursor-pointer transition-all"
+            >
+              取消 / 返回總結
+            </button>
             <button
               type="submit"
               className="px-6 py-2.5 bg-brand-green hover:bg-brand-darkgreen text-white font-sans text-xs font-bold rounded-xl shadow-md cursor-pointer flex items-center gap-1.5 transition-all hover:-translate-y-0.5"
@@ -756,9 +857,13 @@ export default function ProfileForm({ profile, onSave }: ProfileFormProps) {
 
           {/* Action Footer */}
           <div className="flex items-center justify-between border-t border-brand-border-light pt-4 mt-1 bg-white/30 rounded-xl">
-            <span className="text-[10px] text-brand-ash font-medium italic">
-              * 已啟用微習慣數量: {(formData.selectedHabits || []).length} 個
-            </span>
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('summary')}
+              className="px-4 py-2 bg-brand-cream hover:bg-[#F3EFE6] text-brand-muted hover:text-brand-text font-sans text-xs font-semibold rounded-xl border border-brand-border cursor-pointer transition-all"
+            >
+              取消 / 返回總結
+            </button>
             <button
               type="button"
               onClick={() => handleSaveAll()}

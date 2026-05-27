@@ -52,6 +52,10 @@ export const INITIAL_STATE: CoachState = {
     age: 28,
     activityLevel: "lightly_active",
     dailyCalorieTarget: 1600,
+    dailyExerciseTarget: 30,
+    dailySleepTarget: 7,
+    dailyReminderEnabled: true,
+    dailyReminderTime: "09:00",
     customGoal: "培養每日誠實記錄生活、溫和補水與多吃蔬菜的微習慣 🌿",
     avatarId: "avatar-1",
     selectedGuidelines: ["diet_whole", "water_more", "rest_sleep"],
@@ -87,7 +91,7 @@ export const INITIAL_STATE: CoachState = {
     {
       id: "m-welcome",
       sender: "bot",
-      text: "嗨！我是你的 AI 體貼陪跑教練。很高興今天能夠陪伴你！❤️\n\n在這裡：\n👉 我們實行「隨喜自主紀錄制」，不論你吃了大餐、沒時間運動，還是想要睡懶覺，我們都不給予任何審判，只看見你的誠實與微小行動！\n👉 歡迎你傳送食物或活動照片給我，我會自動幫你估算與發放健康點數，給你溫柔的對話支持。\n👉 每天我都幫大腦準備了完全符合你個人設定的 '原子小任務'，點擊完成，一起輕鬆累積每日健康微習慣吧！",
+      text: "嗨！我是您的 PaoPao教練。很高興今天能夠陪伴你！❤️\n\n在這裡：\n👉 輸入「食物名稱」(如：地瓜/香蕉)，我會為您估算標準卡路里與三大營養配盤成分參考（不提供任何個人化臨床飲食治療方案，但為您送上哈佛餐盤公開指引比對）。\n👉 輸入「運動」(如：慢跑/重訓)，我會為您幫忙依代謝當量估算約略消耗大卡與運動推薦！\n👉 點擊「飲食拍照」就能自動分析與無痛習慣打卡。\n\n每天都有專屬原子小任務，一起輕鬆無痛培養一輩子的健康認同吧！🌱",
       timestamp: new Date().toISOString()
     }
   ],
