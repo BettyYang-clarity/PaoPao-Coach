@@ -110,7 +110,7 @@ const fallbackExercises = {
 };
 
 // 1. High-EQ AI Coach Chat Endpoint
-app.post("/api/coach/chat", async (req, res) => {
+app.post(["/api/coach/chat", "/coach/chat"], async (req, res) => {
   try {
     const { message, history, profile } = req.body;
     const lowerMessage = message?.toLowerCase() || "";
@@ -230,7 +230,7 @@ ${message}`;
 });
 
 // 2. High-EQ Image Analyzer Endpoint
-app.post("/api/coach/analyze-image", async (req, res) => {
+app.post(["/api/coach/analyze-image", "/coach/analyze-image"], async (req, res) => {
   try {
     const { image, profile } = req.body;
     if (!image) {
@@ -330,7 +330,7 @@ app.post("/api/coach/analyze-image", async (req, res) => {
 });
 
 // 3. Simulated/Dynamic Personalized Micro-Habits Recommender strictly synchronized with profile selectedHabits
-app.post("/api/coach/suggest-tasks", async (req, res) => {
+app.post(["/api/coach/suggest-tasks", "/coach/suggest-tasks"], async (req, res) => {
   try {
     const { profile } = req.body;
     const selectedHabits = profile?.selectedHabits || [];
