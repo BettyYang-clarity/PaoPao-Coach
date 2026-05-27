@@ -103,25 +103,48 @@ export default function App() {
     saveCoachState(state);
   }, [state]);
 
-  // Handle toggling of micro-tasks
+  // Daily cross-day auto-reset logic for atomic tasks
+  useEffect(() => {
+    const getTodayStr = () => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+    const todayStr = getTodayStr();
+    const lastReset = localStorage.getItem("pao_pao_last_reset_date");
+
+    if (lastReset !== todayStr) {
+      setState((prev) => {
+        const resetTasks = prev.microTasks.map((t) => ({
+          ...t,
+          completed: false,
+          completedAt: undefined
+        }));
+        return {
+          ...prev,
+          microTasks: resetTasks
+        };
+      });
+      localStorage.setItem("pao_pao_last_reset_date", todayStr);
+    }
+  }, []);
+
+  // Handle toggling of micro-tasks (Using delta point calculation to persist historical points)
   const handleToggleTask = (id: string) => {
     setState((prev) => {
+      let pointsDiff = 0;
       const updatedTasks = prev.microTasks.map((task) => {
         if (task.id === id) {
           const newCompleted = !task.completed;
+          pointsDiff = newCompleted ? task.points : -task.points;
           return { ...task, completed: newCompleted, completedAt: newCompleted ? new Date().toISOString() : undefined };
         }
         return task;
       });
 
-      // Calculate total points
-      const tPoints = updatedTasks.reduce((acc, t) => acc + (t.completed ? t.points : 0), 0) + 
-                       prev.records.reduce((acc, r) => acc + r.pointsEarned, 0);
-
       return {
         ...prev,
         microTasks: updatedTasks,
-        totalPoints: tPoints
+        totalPoints: prev.totalPoints + pointsDiff
       };
     });
   };

@@ -43,6 +43,7 @@ export default function HabitBoard({
   const [customCategory, setCustomCategory] = useState<MicroTask["category"]>("diet");
   const [isGenerating, setIsGenerating] = useState(false);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+  const [showCustomForm, setShowCustomForm] = useState(false);
 
   // Icon mapping helper matching the precise category
   const getCategoryIcon = (category: MicroTask["category"]) => {
@@ -236,6 +237,24 @@ export default function HabitBoard({
     setCustomTitle("");
   };
 
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter((t) => t.completed).length;
+  const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  const getEncouragementMessage = () => {
+    if (totalTasks === 0) return "今日還沒有安排任務喔，點擊「重置待辦清單」開始吧！☘️";
+    if (completionPercentage === 0) {
+      return "今天也是全新的原子習慣起點！不急不急，準備跨出小小的第一步，你就是自己的滿分教練 ☘️";
+    }
+    if (completionPercentage < 40) {
+      return `哇！你已經點亮了第 ${completedTasks} 個微原子習慣！每天累積 1% 的複利，正在你的體內發芽茁壯喔，超棒的！👏`;
+    }
+    if (completionPercentage < 100) {
+      return `太厲害了！你已經達成了今日的 ${completedTasks}/${totalTasks} 項任務！大腦的阻力已經徹底被你克服了，溫和前行，為自己鼓掌！✨`;
+    }
+    return `🎉 恭喜你！今日原子任務全數達成 (${completedTasks}/${totalTasks})！你用最低磨損的堅持完成了對自己的承諾，你是最棒的原子習慣大師！❤️`;
+  };
+
   return (
     <div id="habit-panel" className="flex flex-col gap-5 text-left font-sans">
       {/* Title & Actions bar (Slicker and spacious) */}
@@ -244,55 +263,90 @@ export default function HabitBoard({
           <Coffee className="text-brand-green" size={15} />
           <span className="text-xs font-bold text-brand-muted uppercase tracking-wider">每日自主小清單</span>
         </div>
-        <button
-          type="button"
-          onClick={handleRegenerate}
-          disabled={isGenerating}
-          className="text-xs font-sans text-brand-green hover:text-brand-darkgreen font-semibold flex items-center gap-1 cursor-pointer disabled:opacity-50 transition-all active:scale-95"
-          title="換一組符合目前計畫的任務"
-        >
-          <RotateCw size={11} className={isGenerating ? "animate-spin" : ""} />
-          重置待辦清單
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowCustomForm(!showCustomForm)}
+            className="text-xs font-sans text-brand-green hover:text-brand-darkgreen font-semibold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+            title="新增或收合自訂任務"
+          >
+            {showCustomForm ? "➖ 收起自訂" : "➕ 新增自訂"}
+          </button>
+          <span className="text-brand-border-light select-none">|</span>
+          <button
+            type="button"
+            onClick={handleRegenerate}
+            disabled={isGenerating}
+            className="text-xs font-sans text-brand-green hover:text-brand-darkgreen font-semibold flex items-center gap-1 cursor-pointer disabled:opacity-50 transition-all active:scale-95"
+            title="換一組符合目前計畫的任務"
+          >
+            <RotateCw size={11} className={isGenerating ? "animate-spin" : ""} />
+            重置待辦清單
+          </button>
+        </div>
       </div>
 
-      {/* Custom Add Feature (Slimer & simple) - MOVED TO THE TOP AS REQUESTED */}
-      <form onSubmit={handleAddCustomTask} className="bg-brand-cream/15 p-3.5 border border-brand-border/60 rounded-2xl flex flex-col gap-2 shadow-4xs">
-        <span className="text-[10px] font-bold text-brand-muted flex items-center gap-1">
-          <Heart size={11} className="text-brand-green" />
-          自訂一項今日無痛小待辦：
-        </span>
-
-        <div className="flex flex-col sm:flex-row gap-2">
-          <input
-            type="text"
-            className="flex-1 min-w-0 px-3 py-1.5 bg-brand-cream border border-brand-border rounded-xl font-sans text-xs text-brand-text focus:outline-hidden focus:ring-1 focus:ring-brand-green/30 focus:bg-white"
-            value={customTitle}
-            onChange={(e) => setCustomTitle(e.target.value)}
-            placeholder="例如：睡前拉筋 15 秒 🌿"
-          />
-          <div className="flex gap-2 sm:flex-shrink-0">
-            <select
-              className="flex-1 sm:flex-initial px-2 py-1.5 bg-brand-cream border border-brand-border rounded-xl font-sans text-xs text-brand-muted cursor-pointer"
-              value={customCategory}
-              onChange={(e) => setCustomCategory(e.target.value as MicroTask["category"])}
-            >
-              <option value="diet">飲食 🥗</option>
-              <option value="water">補水 💧</option>
-              <option value="exercise">運動 🏃</option>
-              <option value="sleep">睡眠 😴</option>
-              <option value="mood">心靈 🌸</option>
-            </select>
-            <button
-              type="submit"
-              className="px-3.5 py-1.5 bg-brand-beige hover:bg-brand-sand text-brand-green border border-brand-border rounded-xl cursor-pointer shadow-3xs transition-all flex-shrink-0 active:scale-95 flex items-center justify-center gap-1 font-bold font-sans text-xs"
-              title="添加自主約定"
-            >
-              <Plus size={14} /> 新增
-            </button>
+      {/* 頂部任務完成進度及動態同理心鼓勵詞橫幅 */}
+      {totalTasks > 0 && (
+        <div className="bg-[#FAF7F2] border border-brand-border/60 rounded-2xl p-4 flex flex-col gap-2.5 shadow-4xs transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-extrabold text-[#5C564A] flex items-center gap-1.5">
+              <Award size={13} className="text-brand-green animate-pulse" />
+              今日原子任務進度：{completedTasks} / {totalTasks} ({completionPercentage}%)
+            </span>
           </div>
+          {/* 高質感進度條 */}
+          <div className="w-full bg-[#EAE3D2]/55 h-2 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-brand-green rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${completionPercentage}%` }}
+            />
+          </div>
+          <p className="text-[10.5px] leading-relaxed text-[#5C564A] font-medium font-sans mt-0.5">
+            {getEncouragementMessage()}
+          </p>
         </div>
-      </form>
+      )}
+
+      {/* Custom Add Feature (Slimer & simple) - Collapsible controlled by showCustomForm */}
+      {showCustomForm && (
+        <form onSubmit={handleAddCustomTask} className="bg-brand-cream/15 p-3.5 border border-brand-border/60 rounded-2xl flex flex-col gap-2 shadow-4xs animate-fade-in">
+          <span className="text-[10px] font-bold text-brand-muted flex items-center gap-1">
+            <Heart size={11} className="text-brand-green" />
+            自訂一項今日無痛小待辦：
+          </span>
+
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="text"
+              className="flex-1 min-w-0 px-3 py-1.5 bg-brand-cream border border-brand-border rounded-xl font-sans text-xs text-brand-text focus:outline-hidden focus:ring-1 focus:ring-brand-green/30 focus:bg-white"
+              value={customTitle}
+              onChange={(e) => setCustomTitle(e.target.value)}
+              placeholder="例如：睡前拉筋 15 秒 🌿"
+            />
+            <div className="flex gap-2 sm:flex-shrink-0">
+              <select
+                className="flex-1 sm:flex-initial px-2 py-1.5 bg-brand-cream border border-brand-border rounded-xl font-sans text-xs text-brand-muted cursor-pointer"
+                value={customCategory}
+                onChange={(e) => setCustomCategory(e.target.value as MicroTask["category"])}
+              >
+                <option value="diet">飲食 🥗</option>
+                <option value="water">補水 💧</option>
+                <option value="exercise">運動 🏃</option>
+                <option value="sleep">睡眠 😴</option>
+                <option value="mood">心靈 🌸</option>
+              </select>
+              <button
+                type="submit"
+                className="px-3.5 py-1.5 bg-brand-beige hover:bg-brand-sand text-brand-green border border-brand-border rounded-xl cursor-pointer shadow-3xs transition-all flex-shrink-0 active:scale-95 flex items-center justify-center gap-1 font-bold font-sans text-xs"
+                title="添加自主約定"
+              >
+                <Plus size={14} /> 新增
+              </button>
+            </div>
+          </div>
+        </form>
+      )}
 
       {/* Task List (Clean minimalist layout) */}
       <div className="flex flex-col gap-3">
