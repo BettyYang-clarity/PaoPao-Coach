@@ -5,7 +5,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { ChatMessage, UserProfile, WellnessRecord } from "../types";
-import { Send, Image, Loader2, Sparkles, AlertCircle } from "lucide-react";
+import { Send, Image, Loader2, Sparkles, AlertCircle, Pencil, X } from "lucide-react";
 import { compressImage } from "../lib/imageCompress";
 
 interface CoachChatProps {
@@ -14,6 +14,7 @@ interface CoachChatProps {
   onSendMessage: (text: string) => Promise<void>;
   onImageAnalysisResult: (record: WellnessRecord) => void;
   onClearChat?: () => void;
+  onAddCustomMessages?: (userMsg: ChatMessage, botMsg: ChatMessage) => void;
 }
 
 export default function CoachChat({
@@ -21,12 +22,25 @@ export default function CoachChat({
   profile,
   onSendMessage,
   onImageAnalysisResult,
-  onClearChat
+  onClearChat,
+  onAddCustomMessages
 }: CoachChatProps) {
   const [inputText, setInputText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [pendingAnalysis, setPendingAnalysis] = useState<{
+    type: 'diet' | 'exercise';
+    title: string;
+    estimatedValue: number;
+    proteinGrams?: number;
+    caloriesBurned?: number;
+    unit: string;
+    base64: string;
+    pointsEarned: number;
+    coachFeedback: string;
+    nutritionRough?: any;
+  } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -80,10 +94,15 @@ export default function CoachChat({
     setIsSending(true);
     setUploadError(null);
 
+    let base64 = "";
+    let mimeType = "";
+
     try {
       // Utilizing high efficiency compressor with automatic client-side canvas resizing 
       // which is extremely robust against iOS Safari RAM allocation rules and payload limits.
-      const { base64, mimeType } = await compressImage(file);
+      const compressed = await compressImage(file);
+      base64 = compressed.base64;
+      mimeType = compressed.mimeType;
 
       // Call our server-side image analysis model
       const res = await fetch("/api/coach/analyze-image", {
@@ -102,43 +121,72 @@ export default function CoachChat({
       }
 
       const apiResult = await res.json();
-      const titleEmoji = apiResult.type === "diet" ? "🍱" : "🏃‍♀️";
-      const titleText = apiResult.type === "diet" 
-        ? `AI 飲食辨識: ${apiResult.estimatedValue} ${apiResult.unit}`
-        : `AI 運動辨識: ${apiResult.estimatedValue} ${apiResult.unit}`;
-
-      const finalRecord: WellnessRecord = {
-        id: `r-ai-${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        type: apiResult.type,
-        title: `${titleEmoji} ${titleText}`,
-        imageUrl: base64, // 保留拍照以在健康牆上秀出！
-        estimatedValue: apiResult.estimatedValue,
-        unit: apiResult.unit,
-        pointsEarned: apiResult.pointsEarned,
-        coachFeedback: apiResult.coachFeedback,
-        nutritionRough: apiResult.nutritionRough
-      };
       
-      // Update the parent: logs food, adds points, advances pet sprout
-      onImageAnalysisResult(finalRecord);
+      const userMsg: ChatMessage = {
+        id: `m-usr-img-${Date.now()}`,
+        sender: "user",
+        text: "📸 [上傳了美食/活動照片進行分析]",
+        imageUrl: base64,
+        timestamp: new Date().toISOString()
+      };
+
+      const botMsg: ChatMessage = {
+        id: `m-bot-img-feedback-${Date.now()}`,
+        sender: "bot",
+        text: `🍀 【PaoPao AI 拍照解析中】\n\n辨識項目：${apiResult.title || '健康餐點'}\n預估熱量：${apiResult.estimatedValue} ${apiResult.unit}\n${apiResult.proteinGrams ? `估算蛋白質：${apiResult.proteinGrams} 克\n` : ''}\n教練溫和評估：\n${apiResult.coachFeedback}\n\n下方已為您開啟紀錄調整區。如有需要，您可以手動細化 (refine) 熱量或數值後確認登錄。也可以直接與我討論此餐點唷！`,
+        timestamp: new Date().toISOString()
+      };
+
+      if (onAddCustomMessages) {
+        onAddCustomMessages(userMsg, botMsg);
+      }
+
+      setPendingAnalysis({
+        type: apiResult.type || "diet",
+        title: apiResult.title || "美味飲食記錄 🍱",
+        estimatedValue: apiResult.estimatedValue || 0,
+        proteinGrams: apiResult.proteinGrams || 0,
+        caloriesBurned: apiResult.caloriesBurned || 0,
+        unit: apiResult.unit || "大卡",
+        base64,
+        pointsEarned: apiResult.pointsEarned || 20,
+        coachFeedback: apiResult.coachFeedback || "",
+        nutritionRough: apiResult.nutritionRough
+      });
 
     } catch (err: any) {
       console.error(err);
-      setUploadError("照片辨識教練今天累了，幫你做自動大卡記錄和手動加分囉！");
+      setUploadError("照片辨識教練今天累了，幫您做自動大卡記錄和手動加分囉！");
       
-      // Graceful local fallback record in case of transient API error
-      const fallbackRecord: WellnessRecord = {
-        id: `r-fallback-${Date.now()}`,
-        timestamp: new Date().toISOString(),
+      const userMsg: ChatMessage = {
+        id: `m-usr-img-err-${Date.now()}`,
+        sender: "user",
+        text: "📸 [上傳了照片進行分析]",
+        imageUrl: base64,
+        timestamp: new Date().toISOString()
+      };
+
+      const botMsg: ChatMessage = {
+        id: `m-bot-img-fallback-${Date.now()}`,
+        sender: "bot",
+        text: `雖然拍照功能稍微忙碌中，但看見你誠實拍下這片健康起點，PaoPao 教練依然超開心！\n我在下方為您載入了預設欄位，您現在可以手動填寫確認數據進行補登與微調唷。❤️`,
+        timestamp: new Date().toISOString()
+      };
+
+      if (onAddCustomMessages) {
+        onAddCustomMessages(userMsg, botMsg);
+      }
+
+      setPendingAnalysis({
         type: "diet",
         title: "誠實記錄的美味點心 🧁",
         estimatedValue: 320,
+        proteinGrams: 0,
         unit: "大卡",
+        base64,
         pointsEarned: 20,
         coachFeedback: "雖然我的相機今天稍微模糊了一下，但看見你誠實拍下照片並記錄，我的原子習慣天線瞬間加滿！誠實是好習慣的第一滴雨水。直接幫你加記錄點 20 點！"
-      };
-      onImageAnalysisResult(fallbackRecord);
+      });
     } finally {
       setIsSending(false);
     }
@@ -293,6 +341,88 @@ export default function CoachChat({
           <span>{uploadError}</span>
           <button onClick={() => setUploadError(null)} className="ml-auto font-bold text-amber-900 cursor-pointer">
             關閉
+          </button>
+        </div>
+      )}
+
+      {/* Pending Image Analysis Manual Refinement Card */}
+      {pendingAnalysis && (
+        <div className="p-3.5 bg-emerald-50/80 border border-emerald-500/20 rounded-2xl flex flex-col gap-2 mb-3.5 animate-fade-in shadow-3xs">
+          <div className="flex justify-between items-center pb-2 border-b border-emerald-500/10">
+            <span className="text-xs font-bold text-emerald-800 flex items-center gap-1.5 font-sans">
+              <span>✍️</span> 調整並確認儲存紀錄 (Refine)
+            </span>
+            <button
+              type="button"
+              onClick={() => setPendingAnalysis(null)}
+              className="p-1 text-slate-400 hover:text-slate-600 rounded-lg bg-white/70 hover:bg-white transition-all cursor-pointer border border-transparent hover:border-slate-100"
+              title="取消記錄"
+            >
+              <X size={11} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="flex flex-col gap-1 col-span-2">
+              <label className="text-[10px] text-emerald-900 font-bold">項目名稱：</label>
+              <input
+                type="text"
+                className="px-2.5 py-1.5 bg-white border border-slate-200/80 rounded-lg text-slate-700 text-xs font-sans outline-hidden"
+                value={pendingAnalysis.title}
+                onChange={(e) => setPendingAnalysis({ ...pendingAnalysis, title: e.target.value })}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] text-emerald-900 font-bold">
+                {pendingAnalysis.type === 'diet' ? '估計熱量 (大卡)：' : `累計數值 (${pendingAnalysis.unit})：`}
+              </label>
+              <input
+                type="number"
+                className="px-2.5 py-1.5 bg-white border border-slate-200/80 rounded-lg text-slate-700 text-xs font-sans outline-hidden"
+                value={pendingAnalysis.estimatedValue}
+                onChange={(e) => setPendingAnalysis({ ...pendingAnalysis, estimatedValue: Number(e.target.value) })}
+              />
+            </div>
+
+            {pendingAnalysis.type === 'diet' && (
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] text-emerald-900 font-bold">估計蛋白質 (克)：</label>
+                <input
+                  type="number"
+                  className="px-2.5 py-1.5 bg-white border border-slate-200/80 rounded-lg text-slate-700 text-xs font-sans outline-hidden"
+                  value={pendingAnalysis.proteinGrams || 0}
+                  onChange={(e) => setPendingAnalysis({ ...pendingAnalysis, proteinGrams: Number(e.target.value) })}
+                />
+              </div>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              const titleEmoji = pendingAnalysis.type === "diet" ? "🍱" : "🏃‍♀️";
+              const isPrefixed = pendingAnalysis.title.startsWith("🍱") || pendingAnalysis.title.startsWith("🏃‍♀️") || pendingAnalysis.title.startsWith("💎") || pendingAnalysis.title.startsWith("🍀");
+              const displayTitle = isPrefixed ? pendingAnalysis.title : `${titleEmoji} ${pendingAnalysis.title}`;
+
+              onImageAnalysisResult({
+                id: `r-ai-manual-${Date.now()}`,
+                timestamp: new Date().toISOString(),
+                type: pendingAnalysis.type,
+                title: displayTitle,
+                imageUrl: pendingAnalysis.base64,
+                estimatedValue: pendingAnalysis.estimatedValue,
+                unit: pendingAnalysis.unit,
+                proteinGrams: pendingAnalysis.type === "diet" ? pendingAnalysis.proteinGrams : undefined,
+                pointsEarned: pendingAnalysis.pointsEarned,
+                coachFeedback: pendingAnalysis.coachFeedback,
+                nutritionRough: pendingAnalysis.nutritionRough
+              });
+              setPendingAnalysis(null);
+            }}
+            className="mt-1 w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white hover:text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm cursor-pointer flex items-center justify-center gap-1 border border-transparent"
+          >
+            <span>💾</span> 確定儲存紀錄並手動登錄！
           </button>
         </div>
       )}

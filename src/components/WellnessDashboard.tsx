@@ -30,7 +30,8 @@ import {
   Award,
   ChevronDown,
   ChevronUp,
-  Trash2
+  Trash2,
+  Pencil
 } from "lucide-react";
 
 interface WellnessDashboardProps {
@@ -40,6 +41,7 @@ interface WellnessDashboardProps {
   microTasks: MicroTask[];
   onAddRecord: (record: WellnessRecord) => void;
   onDeleteRecord?: (recordId: string) => void;
+  onUpdateRecord?: (record: WellnessRecord) => void;
 }
 
 export default function WellnessDashboard({
@@ -48,7 +50,8 @@ export default function WellnessDashboard({
   totalPoints,
   microTasks = [],
   onAddRecord,
-  onDeleteRecord
+  onDeleteRecord,
+  onUpdateRecord
 }: WellnessDashboardProps) {
   // Modal toggles to split visual complexity
   const [showLogModal, setShowLogModal] = useState(false);
@@ -117,6 +120,14 @@ export default function WellnessDashboard({
   const [weightNotes, setWeightNotes] = useState("");
   const [trendDuration, setTrendDuration] = useState<30 | 60 | 90 | 180 | 365>(30);
   const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null);
+
+  // States for Footprint Editing mode
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editValue, setEditValue] = useState<number | "">("");
+  const [editProtein, setEditProtein] = useState<number | "">("");
+  const [editBurnedKcal, setEditBurnedKcal] = useState<number | "">("");
+  const [editBodyFat, setEditBodyFat] = useState<number | "">("");
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -1775,101 +1786,223 @@ export default function WellnessDashboard({
                       );
                     }
 
-                    return [...filteredRecords].reverse().map((rec) => (
-                      <div key={rec.id} className="p-3 bg-brand-cream border border-brand-border-light rounded-2xl flex flex-col gap-2">
-                        <div className="flex justify-between items-start">
-                          <div className="flex items-center gap-2">
-                            <span className="p-1.5 rounded-lg bg-white shadow-4xs border border-brand-border-light text-sm">
-                              {rec.type === 'diet' && "🥗"}
-                              {rec.type === 'exercise' && "🏃"}
-                              {rec.type === 'sleep' && "🛌"}
-                              {rec.type === 'mood' && "🌸"}
-                              {rec.type === 'water' && "🥛"}
-                              {rec.type === 'weight' && "⚖️"}
-                            </span>
-                            <div>
-                              <h4 className="font-sans text-xs font-bold text-brand-text leading-tight">{rec.title}</h4>
-                              <span className="text-[9px] text-[#A39B8D] font-mono leading-none block mt-0.5">
-                                {new Date(rec.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })} • {new Date(rec.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    return [...filteredRecords].reverse().map((rec) => {
+                      const isEditing = editingRecordId === rec.id;
+
+                      if (isEditing) {
+                        return (
+                          <div key={rec.id} className="p-3.5 bg-white border-2 border-brand-green/30 rounded-2xl flex flex-col gap-3 animate-fade-in shadow-3xs">
+                            <div className="flex justify-between items-center pb-2 border-b border-brand-border-light">
+                              <span className="text-xs font-bold text-brand-green flex items-center gap-1 font-sans">
+                                ✏️ 編輯健康數據
                               </span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1.5 flex-shrink-0">
-                            {deletingRecordId === rec.id ? (
-                              <div className="flex items-center gap-1">
-                                <span className="text-[8px] font-bold text-[#E07A5F] px-1.5 py-0.5 bg-red-50 border border-red-100 rounded-md select-none animate-pulse">
-                                  確定刪除？
-                                </span>
+                              <div className="flex gap-1.5">
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    onDeleteRecord?.(rec.id);
-                                    setDeletingRecordId(null);
+                                    if (!editTitle.trim()) return;
+                                    const updated: WellnessRecord = {
+                                      ...rec,
+                                      title: editTitle.trim(),
+                                      estimatedValue: editValue !== "" ? Number(editValue) : undefined,
+                                      proteinGrams: editProtein !== "" ? Number(editProtein) : undefined,
+                                      caloriesBurned: editBurnedKcal !== "" ? Number(editBurnedKcal) : undefined,
+                                      bodyFatPercent: editBodyFat !== "" ? Number(editBodyFat) : undefined
+                                    };
+                                    onUpdateRecord?.(updated);
+                                    setEditingRecordId(null);
                                   }}
-                                  className="p-1 px-1.5 bg-[#E07A5F] text-white rounded-md hover:bg-red-600 transition-all cursor-pointer font-sans text-[8.5px] font-extrabold"
+                                  className="px-2.5 py-1 bg-brand-green text-white hover:bg-brand-darkgreen rounded-lg text-[9.5px] font-bold cursor-pointer transition-all active:scale-95 border border-transparent"
                                 >
-                                  是
+                                  保存
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => setDeletingRecordId(null)}
-                                  className="p-1 px-1.5 bg-white border border-brand-border text-brand-muted hover:text-brand-text rounded-md transition-all cursor-pointer font-sans text-[8px]"
+                                  onClick={() => setEditingRecordId(null)}
+                                  className="px-2.5 py-1 bg-white border border-brand-border text-brand-muted hover:text-brand-text rounded-lg text-[9.5px] font-bold cursor-pointer transition-all"
                                 >
-                                  否
+                                  取消
                                 </button>
                               </div>
-                            ) : (
-                              <>
-                                <span className="text-[8.5px] font-sans font-bold text-brand-green px-2 py-0.5 bg-white border border-brand-green/10 rounded-md shadow-4xs select-none">
-                                  ✓ 已記錄
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                              <div className="flex flex-col gap-1 col-span-1 sm:col-span-2">
+                                <span className="text-[9px] text-[#80796B] font-bold">項目名稱：</span>
+                                <input
+                                  type="text"
+                                  className="px-2.5 py-1.5 bg-brand-cream/40 border border-brand-border rounded-lg text-xs font-sans text-brand-text w-full focus:outline-hidden focus:border-brand-green/50"
+                                  value={editTitle}
+                                  onChange={(e) => setEditTitle(e.target.value)}
+                                />
+                              </div>
+
+                              {rec.estimatedValue !== undefined && (
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-[9px] text-[#80796B] font-bold">累積數值 ({rec.unit})：</span>
+                                  <input
+                                    type="number"
+                                    className="px-2.5 py-1.5 bg-brand-cream/40 border border-brand-border rounded-lg text-xs font-sans text-brand-text w-full focus:outline-hidden focus:border-brand-green/50"
+                                    value={editValue}
+                                    onChange={(e) => setEditValue(e.target.value !== "" ? Number(e.target.value) : "")}
+                                  />
+                                </div>
+                              )}
+
+                              {rec.type === 'diet' && rec.proteinGrams !== undefined && (
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-[9px] text-[#80796B] font-bold">蛋白質克數 (克)：</span>
+                                  <input
+                                    type="number"
+                                    className="px-2.5 py-1.5 bg-brand-cream/40 border border-brand-border rounded-lg text-xs font-sans text-brand-text w-full focus:outline-hidden focus:border-brand-green/50"
+                                    value={editProtein}
+                                    onChange={(e) => setEditProtein(e.target.value !== "" ? Number(e.target.value) : "")}
+                                  />
+                                </div>
+                              )}
+
+                              {rec.type === 'exercise' && rec.caloriesBurned !== undefined && (
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-[9px] text-[#80796B] font-bold">消耗熱量 (大卡)：</span>
+                                  <input
+                                    type="number"
+                                    className="px-2.5 py-1.5 bg-brand-cream/40 border border-brand-border rounded-lg text-xs font-sans text-brand-text w-full focus:outline-hidden focus:border-brand-green/50"
+                                    value={editBurnedKcal}
+                                    onChange={(e) => setEditBurnedKcal(e.target.value !== "" ? Number(e.target.value) : "")}
+                                  />
+                                </div>
+                              )}
+
+                              {rec.type === 'weight' && rec.bodyFatPercent !== undefined && (
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-[9px] text-[#80796B] font-bold">體脂率 (%)：</span>
+                                  <input
+                                    type="number"
+                                    step="0.1"
+                                    className="px-2.5 py-1.5 bg-brand-cream/40 border border-brand-border rounded-lg text-xs font-sans text-brand-text w-full focus:outline-hidden focus:border-brand-green/50"
+                                    value={editBodyFat}
+                                    onChange={(e) => setEditBodyFat(e.target.value !== "" ? Number(e.target.value) : "")}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div key={rec.id} className="p-3 bg-brand-cream border border-brand-border-light rounded-2xl flex flex-col gap-2">
+                          <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-2">
+                              <span className="p-1.5 rounded-lg bg-white shadow-4xs border border-brand-border-light text-sm">
+                                {rec.type === 'diet' && "🥗"}
+                                {rec.type === 'exercise' && "🏃"}
+                                {rec.type === 'sleep' && "🛌"}
+                                {rec.type === 'mood' && "🌸"}
+                                {rec.type === 'water' && "🥛"}
+                                {rec.type === 'weight' && "⚖️"}
+                              </span>
+                              <div>
+                                <h4 className="font-sans text-xs font-bold text-brand-text leading-tight">{rec.title}</h4>
+                                <span className="text-[9px] text-[#A39B8D] font-mono leading-none block mt-0.5">
+                                  {new Date(rec.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })} • {new Date(rec.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </span>
-                                {onDeleteRecord && (
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              {deletingRecordId === rec.id ? (
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[8px] font-bold text-[#E07A5F] px-1.5 py-0.5 bg-red-50 border border-red-100 rounded-md select-none animate-pulse">
+                                    確定刪除？
+                                  </span>
                                   <button
                                     type="button"
-                                    onClick={() => setDeletingRecordId(rec.id)}
-                                    className="p-1 text-[#A39B8D] hover:text-red-500 hover:bg-red-50 rounded-lg transition-all border border-transparent hover:border-red-100 cursor-pointer"
-                                    title="刪除這筆紀錄"
+                                    onClick={() => {
+                                      onDeleteRecord?.(rec.id);
+                                      setDeletingRecordId(null);
+                                    }}
+                                    className="p-1 px-1.5 bg-[#E07A5F] text-white rounded-md hover:bg-red-600 transition-all cursor-pointer font-sans text-[8.5px] font-extrabold"
                                   >
-                                    <Trash2 size={11} />
+                                    是
                                   </button>
-                                )}
-                              </>
-                            )}
+                                  <button
+                                    type="button"
+                                    onClick={() => setDeletingRecordId(null)}
+                                    className="p-1 px-1.5 bg-white border border-brand-border text-brand-muted hover:text-brand-text rounded-md transition-all cursor-pointer font-sans text-[8px]"
+                                  >
+                                    否
+                                  </button>
+                                </div>
+                              ) : (
+                                <>
+                                  <span className="text-[8.5px] font-sans font-bold text-brand-green px-2 py-0.5 bg-white border border-brand-green/10 rounded-md shadow-4xs select-none">
+                                    ✓ 已記錄
+                                  </span>
+                                  {onUpdateRecord && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingRecordId(rec.id);
+                                        setEditTitle(rec.title);
+                                        setEditValue(rec.estimatedValue !== undefined ? rec.estimatedValue : "");
+                                        setEditProtein(rec.proteinGrams !== undefined ? rec.proteinGrams : "");
+                                        setEditBurnedKcal(rec.caloriesBurned !== undefined ? rec.caloriesBurned : "");
+                                        setEditBodyFat(rec.bodyFatPercent !== undefined ? rec.bodyFatPercent : "");
+                                      }}
+                                      className="p-1 text-[#A39B8D] hover:text-brand-green hover:bg-white/50 rounded-lg transition-all border border-transparent hover:border-brand-border cursor-pointer"
+                                      title="編輯這筆紀錄"
+                                    >
+                                      <Pencil size={11} />
+                                    </button>
+                                  )}
+                                  {onDeleteRecord && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setDeletingRecordId(rec.id)}
+                                      className="p-1 text-[#A39B8D] hover:text-red-500 hover:bg-red-50 rounded-lg transition-all border border-transparent hover:border-red-100 cursor-pointer"
+                                      title="刪除這筆紀錄"
+                                    >
+                                      <Trash2 size={11} />
+                                    </button>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {rec.estimatedValue !== undefined && (
+                            <div className="flex flex-wrap gap-1 text-[8.5px]">
+                              <span className="px-1.5 py-0.5 bg-white border border-brand-border rounded font-sans text-brand-muted">
+                                數值：{rec.estimatedValue} {rec.unit}
+                              </span>
+                              {rec.bodyFatPercent !== undefined && (
+                                <span className="px-1.5 py-0.5 bg-indigo-50 border border-indigo-100 rounded font-sans text-indigo-700 font-bold">
+                                  體脂：{rec.bodyFatPercent} %
+                                </span>
+                              )}
+                              {rec.proteinGrams !== undefined && rec.proteinGrams > 0 && (
+                                <span className="px-1.5 py-0.5 bg-brand-green/10 border border-brand-green/20 rounded font-sans text-brand-green font-bold">
+                                  蛋白質：{rec.proteinGrams} 克
+                                </span>
+                              )}
+                              {rec.caloriesBurned !== undefined && rec.caloriesBurned > 0 && (
+                                <span className="px-1.5 py-0.5 bg-orange-50 border border-orange-100 rounded font-sans text-orange-700 font-bold">
+                                  消耗熱量：{rec.caloriesBurned} 大卡
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {/* AI Coach line */}
+                          <div className="px-3 py-2 bg-white border border-brand-border rounded-xl">
+                            <p className="text-[10px] text-brand-muted font-sans leading-relaxed">
+                              🙋‍♂️ <span className="font-bold text-brand-green">PaoPao 教練：</span>
+                              {rec.coachFeedback}
+                            </p>
                           </div>
                         </div>
-
-                        {rec.estimatedValue !== undefined && (
-                          <div className="flex flex-wrap gap-1 text-[8.5px]">
-                            <span className="px-1.5 py-0.5 bg-white border border-brand-border rounded font-sans text-brand-muted">
-                              數值：{rec.estimatedValue} {rec.unit}
-                            </span>
-                            {rec.bodyFatPercent !== undefined && (
-                              <span className="px-1.5 py-0.5 bg-indigo-50 border border-indigo-100 rounded font-sans text-indigo-700 font-bold">
-                                體脂：{rec.bodyFatPercent} %
-                              </span>
-                            )}
-                            {rec.proteinGrams !== undefined && rec.proteinGrams > 0 && (
-                              <span className="px-1.5 py-0.5 bg-brand-green/10 border border-brand-green/20 rounded font-sans text-brand-green font-bold">
-                                蛋白質：{rec.proteinGrams} 克
-                              </span>
-                            )}
-                            {rec.caloriesBurned !== undefined && rec.caloriesBurned > 0 && (
-                              <span className="px-1.5 py-0.5 bg-orange-50 border border-orange-100 rounded font-sans text-orange-700 font-bold">
-                                消耗熱量：{rec.caloriesBurned} 大卡
-                              </span>
-                            )}
-                          </div>
-                        )}
-
-                        {/* AI Coach line */}
-                        <div className="px-3 py-2 bg-white border border-brand-border rounded-xl">
-                          <p className="text-[10px] text-brand-muted font-sans leading-relaxed">
-                            🙋‍♂️ <span className="font-bold text-brand-green">PaoPao 教練：</span>
-                            {rec.coachFeedback}
-                          </p>
-                        </div>
-                      </div>
-                    ));
+                      );
+                    });
                   })()}
                 </div>
               )}

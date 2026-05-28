@@ -242,6 +242,43 @@ export default function App() {
     });
   };
 
+  // Update/Edit a logged record (diet, exercise, water, sleep, mood)
+  const handleUpdateRecord = (updatedRecord: WellnessRecord) => {
+    setState((prev) => {
+      const oldRec = prev.records.find(r => r.id === updatedRecord.id);
+      const pointsDiff = (updatedRecord.pointsEarned || 0) - (oldRec?.pointsEarned || 0);
+      
+      const updatedRecords = prev.records.map((r) => {
+        if (r.id === updatedRecord.id) {
+          return updatedRecord;
+        }
+        return r;
+      });
+
+      const updateCoachMessage: ChatMessage = {
+        id: `m-bot-update-${Date.now()}`,
+        sender: "bot",
+        text: `【系統通知】\n我已更新了健康牆上的『${updatedRecord.title}』紀錄數據。`,
+        timestamp: new Date().toISOString()
+      };
+
+      return {
+        ...prev,
+        records: updatedRecords,
+        totalPoints: Math.max(0, prev.totalPoints + pointsDiff),
+        messages: [...prev.messages, updateCoachMessage]
+      };
+    });
+  };
+
+  // Add custom messages to feed (typically user action + AI reaction)
+  const handleAddCustomMessages = (userMsg: ChatMessage, botMsg: ChatMessage) => {
+    setState((prev) => ({
+      ...prev,
+      messages: [...prev.messages, userMsg, botMsg]
+    }));
+  };
+
   // Clear chat history to let user re-initialize with new profile and dietitian setup
   const handleClearMessages = () => {
     setState((prev) => ({
@@ -537,6 +574,7 @@ export default function App() {
                   microTasks={state.microTasks}
                   onAddRecord={handleAddRecord}
                   onDeleteRecord={handleDeleteRecord}
+                  onUpdateRecord={handleUpdateRecord}
                 />
               </div>
             </motion.div>
@@ -602,6 +640,7 @@ export default function App() {
                   handleAddRecord(rec);
                   setShowChatModal(false);
                 }}
+                onAddCustomMessages={handleAddCustomMessages}
               />
             </div>
 
