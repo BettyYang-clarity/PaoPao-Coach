@@ -105,6 +105,11 @@ export default function CoachChat({
       mimeType = compressed.mimeType;
 
       // Call our server-side image analysis model
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, 13000); // 13 seconds timeout to prevent hanging
+
       const res = await fetch("/api/coach/analyze-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -113,8 +118,11 @@ export default function CoachChat({
           mimeType,
           textDescription: `使用者上傳了一張食物照片，請給予溫和的原子習慣加分建議。`,
           profile
-        })
+        }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!res.ok) {
         throw new Error("伺服器影像辨識失敗");

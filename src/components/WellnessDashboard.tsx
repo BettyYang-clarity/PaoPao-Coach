@@ -173,6 +173,11 @@ export default function WellnessDashboard({
       // Utilizing high-compatibility automatic client-side compressor to support iOS memory parameters perfectly
       const { base64, mimeType } = await compressImage(file);
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, 13000); // 13 seconds timeout to prevent hanging
+
       const res = await fetch("/api/coach/analyze-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -181,8 +186,11 @@ export default function WellnessDashboard({
           mimeType,
           textDescription: "使用者上傳了一張食物照片，請給予溫和的原子習慣加分建議。",
           profile
-        })
+        }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!res.ok) {
         throw new Error("影像辨識失敗");
@@ -1949,20 +1957,22 @@ export default function WellnessDashboard({
                                         setEditBurnedKcal(rec.caloriesBurned !== undefined ? rec.caloriesBurned : "");
                                         setEditBodyFat(rec.bodyFatPercent !== undefined ? rec.bodyFatPercent : "");
                                       }}
-                                      className="p-1 text-[#A39B8D] hover:text-brand-green hover:bg-white/50 rounded-lg transition-all border border-transparent hover:border-brand-border cursor-pointer"
+                                      className="px-2 py-0.5 text-[10px] text-brand-text hover:text-white hover:bg-brand-green/95 border border-brand-border hover:border-brand-green rounded-xl transition-all cursor-pointer flex items-center gap-1"
                                       title="編輯這筆紀錄"
                                     >
-                                      <Pencil size={11} />
+                                      <Pencil size={9.5} />
+                                      <span>編輯</span>
                                     </button>
                                   )}
                                   {onDeleteRecord && (
                                     <button
                                       type="button"
                                       onClick={() => setDeletingRecordId(rec.id)}
-                                      className="p-1 text-[#A39B8D] hover:text-red-500 hover:bg-red-50 rounded-lg transition-all border border-transparent hover:border-red-100 cursor-pointer"
+                                      className="px-2 py-0.5 text-[10px] text-red-600 hover:text-white hover:bg-red-500 border border-brand-border-light hover:border-red-500 rounded-xl transition-all cursor-pointer flex items-center gap-1"
                                       title="刪除這筆紀錄"
                                     >
-                                      <Trash2 size={11} />
+                                      <Trash2 size={9.5} />
+                                      <span>刪除</span>
                                     </button>
                                   )}
                                 </>

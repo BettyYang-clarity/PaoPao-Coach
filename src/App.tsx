@@ -312,6 +312,11 @@ export default function App() {
     try {
       const chatHistory = [...state.messages, userMsg].slice(-8); // slice last few to keep context prompt fast
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, 10000); // 10 seconds timeout to prevent hanging
+
       const res = await fetch("/api/coach/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -319,8 +324,11 @@ export default function App() {
           message: userText,
           history: chatHistory,
           profile: state.profile
-        })
+        }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!res.ok) {
         let errDetail = "";
@@ -335,7 +343,7 @@ export default function App() {
       const coachMsg: ChatMessage = {
         id: `m-bot-${Date.now()}`,
         sender: "bot",
-        text: data.reply || data.text || "我已妥善記錄您的習慣足跡，助力解鎖健康勳章唷！",
+        text: data.reply || data.text || "收到囉！在微習慣養成的陪跑路上，我們一起誠實記錄、輕鬆面對生活中的每一步！☕️",
         timestamp: new Date().toISOString()
       };
 
