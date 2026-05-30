@@ -337,16 +337,15 @@ export default function WellnessDashboard({
         title,
         estimatedValue: kcal,
         unit: "大卡",
-        pointsEarned: aiPoints || 20,
+        pointsEarned: 20,
         proteinGrams: proteinVal,
-        imageUrl: aiImageUrl || undefined,
         nutritionRough: {
           carbs: "充足 (碳水提供能量)",
           protein: proteinVal !== undefined ? `${proteinVal}克` : "適中 (肌肉修復活力)",
           fat: "適量",
           veg: "較少 (記得下一頓多吃幾口青菜唷)"
         },
-        coachFeedback: aiFeedback || `哇，誠實記錄了『${title}』${proteinVal !== undefined ? `（含 ${proteinVal} 克蛋白質）` : ""}大餐！這是一次超棒的前進喔。不完美也是美好的滋味，我們已成功在您的「原子勳章生活牆」打上認證鋼印！建議今晚多做 30 秒拉筋或舒服深呼吸，讓身體好好消化！`
+        coachFeedback: `誠實記錄了『${title}』${proteinVal !== undefined ? `（含 ${proteinVal} 克蛋白質）` : ""}，是今日的健康存款！`
       };
 
       setDietTitle("");
@@ -364,10 +363,9 @@ export default function WellnessDashboard({
         title,
         estimatedValue: minutes,
         unit: "分鐘",
-        pointsEarned: aiPoints || 20,
+        pointsEarned: 20,
         caloriesBurned: burnedVal,
-        imageUrl: aiImageUrl || undefined,
-        coachFeedback: aiFeedback || `太強了！你今天動了 ${minutes} 分鐘（${title}）${burnedVal !== undefined ? `，估計消耗了 ${burnedVal} 大卡` : ""}，這可是真真切切的健康存款。不管動作有多簡單、就算只是拉筋扭腰，你的身體細胞都在開心地對你唱歌唷。今日已在「原子勳章生活牆」蓋上實體認證！`
+        coachFeedback: `動了 ${minutes} 分鐘（${title}）${burnedVal !== undefined ? `，消耗約 ${burnedVal} 大卡` : ""}，繼續保持！`
       };
 
       setExerciseTitle("");
@@ -382,7 +380,7 @@ export default function WellnessDashboard({
         estimatedValue: sleepHours,
         unit: "小時",
         pointsEarned: 15,
-        coachFeedback: `你昨晚睡了 ${sleepHours} 小時！充足的休息是一切活力複利的底層基石。即使睡眠時間不完美，光是懂得放下手機上床躺好，就是愛護自己最好的原子行動！已為您在「原子勳章生活牆」認證，再接再厲！`
+        coachFeedback: `你昨晚睡了 ${sleepHours} 小時，充足休息是活力的底層基石。`
       };
     } else {
       // Mood track
@@ -396,19 +394,14 @@ export default function WellnessDashboard({
         moodScore,
         unit: "評級",
         notes: moodNotes.trim() || "今日心靈隨記",
-        coachFeedback: `嗨夥伴，非常感謝你與我分享你今日真實的心情狀態（${label}）。不論今天是晴是雨、哪怕是有點疲憊的霧霾天，這全都是生命最誠實、最美麗的波段。你願意停下來覺察情緒，在心靈原子習慣中是超高端的表現！已為您寫下「原子勳章生活牆」印記保護！`
+        coachFeedback: `感謝你分享今日心情（${label}），覺察情緒本身就是最好的自我照顧。`
       };
       setMoodNotes("");
     }
 
-    // Reset AI intermediate states after saving
-    setAiFeedback(null);
-    setAiPoints(null);
-    setAiImageUrl(null);
-
     onAddRecord(freshRecord);
     setIsLoading(false);
-    setShowLogModal(false); // Auto-close manual log after adding for sleek look
+    setShowLogModal(false);
   };
 
   // Quick preset logger
@@ -476,12 +469,12 @@ export default function WellnessDashboard({
             <div className="mt-2.5">
               <div className="flex items-baseline gap-0.5 line-clamp-1">
                 <span className="text-sm font-mono font-bold text-brand-text">{todayStats.kcal}</span>
-                <span className="text-[9px] text-[#80796B]">/ {profile.dailyCalorieTarget} kcal</span>
+                <span className="text-[9px] text-[#80796B]">/ {profile.dailyCalorieTarget || 1600} kcal</span>
               </div>
               <div className="w-full bg-brand-cream h-1 rounded-full overflow-hidden mt-2 border border-brand-border-light/40">
                 <div
                   className="bg-brand-green h-full rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, (todayStats.kcal / profile.dailyCalorieTarget) * 100)}%` }}
+                  style={{ width: `${Math.min(100, (todayStats.kcal / (profile.dailyCalorieTarget || 1600)) * 100)}%` }}
                 />
               </div>
             </div>
@@ -663,33 +656,18 @@ export default function WellnessDashboard({
                       ref={fileInputRef}
                       onChange={handleFileChange}
                       accept="image/*"
-                      className={`absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 ${
-                        imgLoading ? "pointer-events-none" : "pointer-events-auto"
-                      }`}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 pointer-events-auto"
                       title="選取飲食相片上傳"
                     />
                     
-                    {imgLoading ? (
-                      <div className="flex flex-col items-center gap-1.5">
-                        <Loader2 className="w-5 h-5 text-brand-green animate-spin" />
-                        <span className="text-[10px] font-bold text-brand-green font-sans">PaoPao AI 解讀美食中...</span>
+                    <div className="flex flex-col items-center gap-1 text-brand-muted">
+                      <div className="p-1.5 bg-brand-cream rounded-lg border border-brand-border-light/50 shadow-4xs">
+                        <ImageIcon size={14} className="text-brand-green" />
                       </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-1 text-brand-muted">
-                        <div className="p-1.5 bg-brand-cream rounded-lg border border-brand-border-light/50 shadow-4xs">
-                          <ImageIcon size={14} className="text-brand-green" />
-                        </div>
-                        <span className="text-xs font-bold text-brand-text">相機拍拍美食 或 拖放相片至此</span>
-                        <span className="text-[9px] text-brand-ash">AI將陪伴鑑定並自動完成記卡 ☘️</span>
-                      </div>
-                    )}
-                  </div>
-                  {imgError && (
-                    <div className="p-1.5 bg-red-50 border border-red-200/40 rounded-lg text-red-600 text-[9px] font-sans">
-                      {imgError}
+                      <span className="text-xs font-bold text-brand-text">相機拍拍美食 或 拖放相片至此</span>
                     </div>
-                  )}
                 </div>
+              </div>
 
                 {/* Direct Manual Entry */}
                 <form onSubmit={handleLogSubmit} className="md:col-span-6 flex flex-col justify-between gap-2.5">
@@ -760,35 +738,12 @@ export default function WellnessDashboard({
                   <button
                     type="button"
                     onClick={handleInlineConsult}
-                    disabled={inlineLoading || !inlineQuery.trim()}
+                    disabled={!inlineQuery.trim()}
                     className="px-3.5 py-1.5 bg-brand-green hover:bg-brand-darkgreen disabled:bg-brand-ash/20 disabled:text-brand-ash/50 text-white font-sans text-xs font-bold rounded-xl shadow-4xs transition-all active:scale-[0.98] cursor-pointer flex items-center gap-1 flex-shrink-0"
                   >
-                    {inlineLoading ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      "諮詢"
-                    )}
+                    諮詢
                   </button>
                 </div>
-
-                {inlineAnswer && (
-                  <div className="mt-1 p-3 bg-brand-cream border border-brand-sand rounded-xl text-left animate-fade-in relative shadow-4xs">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <span className="text-[10.5px] font-bold text-brand-green">🍀 PaoPao 教練回覆：</span>
-                    </div>
-                    <p className="text-[11px] text-brand-text leading-relaxed font-sans whitespace-pre-wrap">
-                      {inlineAnswer}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setInlineAnswer("")}
-                      className="absolute top-2 right-2 p-0.5 hover:bg-brand-cream text-brand-ash rounded-full transition-all cursor-pointer"
-                      title="關閉回覆"
-                    >
-                      <X size={11} />
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -962,35 +917,12 @@ export default function WellnessDashboard({
                   <button
                     type="button"
                     onClick={handleInlineConsult}
-                    disabled={inlineLoading || !inlineQuery.trim()}
+                    disabled={!inlineQuery.trim()}
                     className="px-3.5 py-1.5 bg-brand-green hover:bg-brand-darkgreen disabled:bg-brand-ash/20 disabled:text-brand-ash/50 text-white font-sans text-xs font-bold rounded-xl shadow-4xs transition-all active:scale-[0.98] cursor-pointer flex items-center gap-1 flex-shrink-0"
                   >
-                    {inlineLoading ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      "諮詢"
-                    )}
+                    諮詢
                   </button>
                 </div>
-
-                {inlineAnswer && (
-                  <div className="mt-1 p-3 bg-brand-cream border border-brand-sand rounded-xl text-left animate-fade-in relative shadow-4xs">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <span className="text-[10.5px] font-bold text-brand-green">🍀 PaoPao 教練回覆：</span>
-                    </div>
-                    <p className="text-[11px] text-brand-text leading-relaxed font-sans whitespace-pre-wrap">
-                      {inlineAnswer}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setInlineAnswer("")}
-                      className="absolute top-2 right-2 p-0.5 hover:bg-brand-cream text-brand-ash rounded-full transition-all cursor-pointer"
-                      title="關閉回覆"
-                    >
-                      <X size={11} />
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -1267,22 +1199,12 @@ export default function WellnessDashboard({
               <button
                 onClick={() => {
                   setShowLogModal(false);
-                  setAiFeedback(null);
-                  setAiPoints(null);
-                  setAiImageUrl(null);
                 }}
                 className="p-1.5 hover:bg-brand-cream border border-transparent hover:border-brand-border rounded-xl transition-all cursor-pointer text-brand-ash hover:text-brand-muted"
               >
                 <X size={16} />
               </button>
             </div>
-
-            {aiFeedback && (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] rounded-xl flex items-center gap-1.5 animate-pulse font-sans">
-                <Sparkles size={12} className="text-emerald-600 flex-shrink-0 animate-bounce" />
-                <span>💡 <b>PaoPao AI 已自動辨識完成！</b>請確認或調整以下辨識出來的數據，確認無誤後點擊儲存即可！</span>
-              </div>
-            )}
 
             {/* Segment Tab buttons inside the pop-up */}
             <div className="flex bg-brand-cream border border-brand-border p-1 rounded-xl">

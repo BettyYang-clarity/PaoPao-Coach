@@ -478,8 +478,8 @@ export default function CoachChat({
                 {Object.entries(pendingAnalysis.nutritionRough).map(([key, val]) => {
                   const labels: Record<string, string> = { carbs: "碳水", protein: "蛋白質", fat: "油脂", veg: "蔬菜" };
                   return (
-                    <span key={key} className={`px-2 py-0.5 rounded-full text-[10px] border font-medium ${getNutritionColor(val)}`}>
-                      {labels[key] || key}：{val}
+                    <span key={key} className={`px-2 py-0.5 rounded-full text-[10px] border font-medium ${getNutritionColor(val as string)}`}>
+                      {labels[key] || key}：{val as string}
                     </span>
                   );
                 })}
