@@ -9,37 +9,41 @@ import type { Request, Response } from "express";
 const IMAGE_ANALYZER_PROMPT = `你是一位「精煉溫柔系」的 PaoPao健康養成教練，擅長分析食物照片。
 
 【分析任務】：
-你會拿到一張食物（或運動）照片。請你進行透明、有條理的推理分析，像在跟使用者說話一樣。
+你會拿到一張食物（或運動）照片與使用者個人檔案（含每日熱量目標）。請進行透明、有條理的推理，像在跟使用者說話。
 
-【回應格式要求】
-請回傳一個 JSON，包含以下欄位：
+【請回傳 JSON，包含以下三個欄位】
 
-1. "reasoning"：這是你對照片的自然語言推理分析（繁體中文），格式如下：
-   - 先描述「我看到的是...」（辨識食物）
-   - 再估算份量：「看起來大概是...份、...克」
-   - 給出熱量與蛋白質的估算範圍（附上估算依據）
-   - 針對這道食物的飲食特性（偏油？偏鹹？蛋白質充足？蔬菜不足？），給出 1 個具體的替代或補充建議
-   - 語氣樸實微溫，2~4 句，不要過度讚美，不用驚嘆號
+1. "reasoning"（繁體中文，3~5 句）：
+   - 「這看起來是...」（辨識食物與烹調方式）
+   - 估算份量（幾份/幾克）
+   - 說明熱量、蛋白質、碳水、脂肪的估算數字與依據
+   - 語氣樸實微溫，不用驚嘆號，不要過度讚美
 
-2. "pendingRecord"：結構化的初始估算，供使用者調整：
+2. "pendingRecord"（結構化初始估算）：
    {
-     "title": "食物名稱（繁體中文）",
+     "title": 食物名稱（繁體中文，20字以內）,
      "type": "diet" 或 "exercise",
-     "estimatedValue": 熱量數字（大卡）,
+     "estimatedValue": 熱量（大卡，整數）,
      "unit": "大卡",
-     "proteinGrams": 蛋白質克數（整數）,
+     "proteinGrams": 蛋白質（克，整數）,
+     "carbsGrams": 碳水化合物（克，整數）,
+     "fatGrams": 脂肪（克，整數）,
      "nutritionRough": {
        "carbs": "偏高/適中/偏低",
-       "protein": "偏高/適中/偏低",
+       "protein": "充足/適中/偏低",
        "fat": "偏高/適中/偏低",
        "veg": "充足/不足/極少"
      },
      "pointsEarned": 20
    }
 
-3. "dietAdvice"：針對這道食物的飲食建議（1~2 句），例如：「這道菜偏油，建議下一餐搭配燙青菜，或選擇蒸煮的烹調方式。」
+3. "coachSuggestion"（繁體中文，2~3 句，個人化行動建議）：
+   - 根據此餐熱量 vs 使用者每日熱量目標，算出佔比並明確說出
+   - 給出今天剩餘飲食或運動的具體補償建議（例如：下一餐選什麼、飯後散步幾分鐘）
+   - 若熱量合理，則給鼓勵並建議如何繼續維持
+   - 例如：「這餐約 680 大卡，佔你每日目標 1800 大卡的 38%，稍微偏多一點。晚餐可以選擇清蒸魚或蔬菜豆腐湯，減少油脂攝取。飯後散步 20 分鐘可以幫助消耗約 80 大卡。」
 
-注意：estimatedValue 請給單一數字（取估算範圍的中間值）。不要輸出 Markdown，直接回傳純 JSON。`;
+注意：所有數字欄位請給整數。不要輸出 Markdown，直接回傳純 JSON。`;
 
 function getGeminiClient(): GoogleGenAI {
   const rawKey = process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_Pao;
@@ -47,9 +51,7 @@ function getGeminiClient(): GoogleGenAI {
   return new GoogleGenAI({
     apiKey: key || "MOCK_KEY",
     httpOptions: {
-      headers: {
-        "User-Agent": "aistudio-build",
-      },
+      headers: { "User-Agent": "aistudio-build" },
     },
   });
 }
@@ -64,13 +66,41 @@ function base64ToPart(base64Str: string, mimeType: string) {
   const base64Data = base64Str.includes("base64,")
     ? base64Str.split("base64,")[1]
     : base64Str;
-  return {
-    inlineData: {
-      data: base64Data,
-      mimeType: mimeType,
-    },
-  };
+  return { inlineData: { data: base64Data, mimeType } };
 }
+
+const RESPONSE_SCHEMA = {
+  type: Type.OBJECT,
+  required: ["reasoning", "pendingRecord", "coachSuggestion"],
+  properties: {
+    reasoning: { type: Type.STRING },
+    coachSuggestion: { type: Type.STRING },
+    pendingRecord: {
+      type: Type.OBJECT,
+      required: ["title", "type", "estimatedValue", "unit", "proteinGrams", "carbsGrams", "fatGrams", "nutritionRough", "pointsEarned"],
+      properties: {
+        title: { type: Type.STRING },
+        type: { type: Type.STRING, enum: ["diet", "exercise"] },
+        estimatedValue: { type: Type.INTEGER },
+        unit: { type: Type.STRING },
+        proteinGrams: { type: Type.INTEGER },
+        carbsGrams: { type: Type.INTEGER },
+        fatGrams: { type: Type.INTEGER },
+        nutritionRough: {
+          type: Type.OBJECT,
+          required: ["carbs", "protein", "fat", "veg"],
+          properties: {
+            carbs: { type: Type.STRING },
+            protein: { type: Type.STRING },
+            fat: { type: Type.STRING },
+            veg: { type: Type.STRING }
+          }
+        },
+        pointsEarned: { type: Type.INTEGER }
+      }
+    }
+  }
+};
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -86,7 +116,7 @@ export default async function handler(req: Request, res: Response) {
       try {
         const ai = getGeminiClient();
         const part = base64ToPart(image, mimeType);
-        const contentsText = `使用者個人檔案: ${JSON.stringify(profile)}。請分析這張照片並回傳符合格式的 JSON。`;
+        const contentsText = `使用者個人檔案: ${JSON.stringify(profile)}。請分析這張照片，根據使用者的每日熱量目標（dailyCalorieTarget）給出個人化建議。回傳符合格式的 JSON。`;
 
         let response;
         const callParams = (modelName: string) => ({
@@ -95,36 +125,7 @@ export default async function handler(req: Request, res: Response) {
           config: {
             systemInstruction: IMAGE_ANALYZER_PROMPT,
             responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              required: ["reasoning", "pendingRecord", "dietAdvice"],
-              properties: {
-                reasoning: { type: Type.STRING },
-                dietAdvice: { type: Type.STRING },
-                pendingRecord: {
-                  type: Type.OBJECT,
-                  required: ["title", "type", "estimatedValue", "unit", "proteinGrams", "nutritionRough", "pointsEarned"],
-                  properties: {
-                    title: { type: Type.STRING },
-                    type: { type: Type.STRING, enum: ["diet", "exercise"] },
-                    estimatedValue: { type: Type.INTEGER },
-                    unit: { type: Type.STRING },
-                    proteinGrams: { type: Type.INTEGER },
-                    nutritionRough: {
-                      type: Type.OBJECT,
-                      required: ["carbs", "protein", "fat", "veg"],
-                      properties: {
-                        carbs: { type: Type.STRING },
-                        protein: { type: Type.STRING },
-                        fat: { type: Type.STRING },
-                        veg: { type: Type.STRING }
-                      }
-                    },
-                    pointsEarned: { type: Type.INTEGER }
-                  }
-                }
-              }
-            }
+            responseSchema: RESPONSE_SCHEMA
           }
         });
 
@@ -150,14 +151,16 @@ export default async function handler(req: Request, res: Response) {
 
     // Mock fallback
     return res.json({
-      reasoning: "這看起來是一份家常便當，有白飯、炒青菜和肉類。估算份量大概是一人份（約 250g），以白飯 + 炒肉的組合來看，熱量大約在 500~600 大卡之間，取中間值約 550 大卡。蛋白質部分視肉量而定，估算約 20 克。",
-      dietAdvice: "這餐蔬菜比例偏少，建議下一餐可以多加一份燙青菜，或在點餐時主動要求多配一份蔬菜。",
+      reasoning: "這看起來是一份家常便當，有白飯、炒青菜和豬肉片。估算份量約一人份（250g）。以白飯（碳水約 70 克）加上炒豬肉（蛋白質約 22 克、脂肪約 18 克）來估算，整體熱量大約在 530~580 大卡之間，取 550 大卡。",
+      coachSuggestion: "這餐約 550 大卡，佔每日目標的 28~30%，屬合理範圍。蔬菜稍少，下一餐可以多點一份燙青菜或豆腐湯補充纖維。飯後散步 15 分鐘（約消耗 60 大卡）有助於血糖平穩。",
       pendingRecord: {
-        title: "家常便當（示範）",
+        title: "家常便當",
         type: "diet",
         estimatedValue: 550,
         unit: "大卡",
-        proteinGrams: 20,
+        proteinGrams: 22,
+        carbsGrams: 70,
+        fatGrams: 18,
         nutritionRough: {
           carbs: "偏高",
           protein: "適中",
