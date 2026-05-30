@@ -197,23 +197,91 @@ export default function App() {
     }));
   };
 
+  // P0: Export state JSON file default download
+  const handleExportData = () => {
+    try {
+      const dataStr = JSON.stringify(state, null, 2);
+      const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+      const exportFileDefaultName = `paopao_coach_backup_${new Date().toISOString().slice(0, 10)}.json`;
+
+      const linkElement = document.createElement('a');
+      linkElement.setAttribute('href', dataUri);
+      linkElement.setAttribute('download', exportFileDefaultName);
+      linkElement.click();
+    } catch (e) {
+      console.error("Export failed:", e);
+      alert("匯出備份失敗，請稍後再試喔！");
+    }
+  };
+
+  // P0: Import state JSON file restore
+  const handleImportData = (importedState: any) => {
+    try {
+      if (!importedState || !importedState.profile || !importedState.records) {
+        alert("無效的備份檔案！必須包含個人檔案與健康紀錄唷。");
+        return;
+      }
+
+      setState({
+        profile: { ...importedState.profile },
+        records: Array.isArray(importedState.records) ? importedState.records.filter(Boolean) : [],
+        microTasks: Array.isArray(importedState.microTasks) ? importedState.microTasks.filter(Boolean) : [],
+        messages: Array.isArray(importedState.messages) ? importedState.messages.filter(Boolean) : [],
+        totalPoints: typeof importedState.totalPoints === 'number' ? importedState.totalPoints : 0,
+        isExcused: !!importedState.isExcused
+      });
+
+      alert("🎉 恭喜！歷史資料備份已成功還原！您的健康足跡與生活積分已安全歸隊 ☘️");
+    } catch (e) {
+      console.error("Import failed:", e);
+      alert("匯入失敗，請確認檔案格式是否正確。");
+    }
+  };
+
   // Add newly logged record (diet, exercise, water, sleep, mood)
   const handleAddRecord = (record: WellnessRecord) => {
     setState((prev) => {
       const newRecords = [...prev.records, record];
-      const newTotalPoints = prev.totalPoints + record.pointsEarned;
+      let newTotalPoints = prev.totalPoints + record.pointsEarned;
+
+      // 🍀 P1: 原子任務自動連動勾選機制 🍀
+      // 尋找今日第一個與 record.type 分類一致且未完成的原子任務
+      let taskCheckedFeedback = "";
+      const updatedTasks = prev.microTasks.map((task) => {
+        // 如果任務類別與紀錄類別相符，且尚未完成，且尚未在此次循環中勾選過
+        if (
+          task.category === record.type &&
+          !task.completed &&
+          !taskCheckedFeedback // 每次只勾選一個任務，避免一次全部完成
+        ) {
+          taskCheckedFeedback = `🎉 【原子任務連動】\n恭喜！檢測到你實踐了同類型的習慣行動，已為你自動勾選原子任務：\n『${task.title}』\n額外為你加 +${task.points} 積分！身體細胞都在為你歡呼二重唱唷！☘️`;
+          newTotalPoints += task.points;
+          return {
+            ...task,
+            completed: true,
+            completedAt: new Date().toISOString()
+          };
+        }
+        return task;
+      });
 
       // Automatically construct corresponding coach chat bubble to make chat feel highly synchronized!
+      const praiseText = [
+        `【自動分析回饋】\n我幫你把『${record.title}』登錄在健康牆上囉！✨\n\n${record.coachFeedback}`,
+        taskCheckedFeedback ? `\n\n${taskCheckedFeedback}` : ""
+      ].join("");
+
       const newCoachMessage: ChatMessage = {
         id: `m-bot-praise-${Date.now()}`,
         sender: "bot",
-        text: `【自動分析回饋】\n我幫你把『${record.title}』登錄在健康牆上囉！✨\n\n${record.coachFeedback}`,
+        text: praiseText,
         timestamp: new Date().toISOString()
       };
 
       return {
         ...prev,
         records: newRecords,
+        microTasks: updatedTasks,
         totalPoints: newTotalPoints,
         messages: [...prev.messages, newCoachMessage]
       };
@@ -619,6 +687,8 @@ export default function App() {
                   onSave={(newProfile) => {
                     handleSaveProfile(newProfile);
                   }}
+                  onExportData={handleExportData}
+                  onImportData={handleImportData}
                 />
               </div>
             </motion.div>

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { UserProfile } from "../types";
 import { GOALS_DATA, Goal, AtomicHabit } from "../data/habitsData";
 import {
@@ -23,9 +23,16 @@ import {
 interface ProfileFormProps {
   profile: UserProfile;
   onSave: (profile: UserProfile) => void;
+  onExportData?: () => void;
+  onImportData?: (importedData: any) => void;
 }
 
-export default function ProfileForm({ profile, onSave }: ProfileFormProps) {
+export default function ProfileForm({
+  profile,
+  onSave,
+  onExportData,
+  onImportData
+}: ProfileFormProps) {
   const [formData, setFormData] = useState<UserProfile>({
     ...profile,
     age: profile.age || 28,
@@ -46,6 +53,24 @@ export default function ProfileForm({ profile, onSave }: ProfileFormProps) {
 
   const [activeSubTab, setActiveSubTab] = useState<'summary' | 'plan' | 'habits'>('summary');
   const [isSaved, setIsSaved] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const parsed = JSON.parse(event.target?.result as string);
+          onImportData?.(parsed);
+        } catch (err) {
+          alert("解析備份檔案失敗，格式可能不正確！");
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = "";
+    }
+  };
 
   // Keep state synchronized with parent profile props
   useEffect(() => {
@@ -466,6 +491,41 @@ export default function ProfileForm({ profile, onSave }: ProfileFormProps) {
             >
               ⚡ 修改原子微行動
             </button>
+          </div>
+
+          {/* P0: 數據備份與還原備用區 */}
+          <div className="mt-4 p-4 bg-brand-cream/40 border border-dashed border-brand-border rounded-[24px] flex flex-col gap-3">
+            <div>
+              <h4 className="text-xs font-sans font-bold text-brand-olive flex items-center gap-1.5">
+                💾 本地數據備份防護線
+              </h4>
+              <p className="text-[10px] text-brand-muted mt-1 leading-relaxed">
+                您的健康足跡、原子微行動與生活積分皆儲存於瀏覽器快取。建議定期匯出備份以保障數據安全喔！
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3.5">
+              <button
+                type="button"
+                onClick={onExportData}
+                className="py-2 px-3 bg-white hover:bg-brand-cream text-brand-olive font-sans text-[10.5px] font-bold rounded-xl border border-brand-border cursor-pointer transition-all active:scale-98 shadow-4xs"
+              >
+                📥 匯出資料備份
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="py-2 px-3 bg-white hover:bg-brand-cream text-brand-olive font-sans text-[10.5px] font-bold rounded-xl border border-brand-border cursor-pointer transition-all active:scale-98 shadow-4xs"
+              >
+                📤 匯入歷史資料
+              </button>
+            </div>
+            <input
+              type="file"
+              accept=".json"
+              ref={fileInputRef}
+              className="hidden"
+              onChange={handleImportFileChange}
+            />
           </div>
         </div>
       ) : activeSubTab === 'plan' ? (
