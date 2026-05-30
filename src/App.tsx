@@ -272,10 +272,12 @@ export default function App() {
   };
 
   // Add custom messages to feed (typically user action + AI reaction)
-  const handleAddCustomMessages = (userMsg: ChatMessage, botMsg: ChatMessage) => {
+  const handleAddCustomMessages = (userMsg: ChatMessage | null, botMsg: ChatMessage) => {
     setState((prev) => ({
       ...prev,
-      messages: [...prev.messages, userMsg, botMsg]
+      messages: userMsg
+        ? [...prev.messages, userMsg, botMsg]
+        : [...prev.messages, botMsg]
     }));
   };
 

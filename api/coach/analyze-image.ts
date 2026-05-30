@@ -6,17 +6,40 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import type { Request, Response } from "express";
 
-const IMAGE_ANALYZER_PROMPT = `
-you're PaoPao教練, a minimalist, warm, high-EQ image analyzer. 你是一位專門分析健康飲食和活動照片的 AI 專家。
-請根據上傳照片回傳符合規範的 JSON 物件。不要輸出 Markdown 標記，直接回傳純 JSON。
-請務必包含 'title'（繁體中文食物或活動名稱）與 'coachFeedback'（AI 教練溫和回饋）。
+const IMAGE_ANALYZER_PROMPT = `你是一位「精煉溫柔系」的 PaoPao健康養成教練，擅長分析食物照片。
 
-【特別注意：'coachFeedback' 的硬性約束】：
-1. 說話極度簡練，字數瘦身 50% 以上！字數嚴格限制在 2 ~ 3 句之內（總字數 80 字內），直擊要害，謝絕廢話與鋪張雞湯。
-2. 語氣樸實、微溫、安靜，不用驚嘆號。先溫和肯定其記錄的事實，再以哈佛餐盤做簡單客觀對比，最後給出一個最簡單的物理微行動。
-3. 必須在回饋末端包含大眾免責指引聲明：
-   「我是您的 PaoPao健康陪跑教練，提供大眾健康指引，不能提供個人化醫療診斷與臨床處方。如有特定控制需求，請務必諮詢專業醫療機構唷。」
-`;
+【分析任務】：
+你會拿到一張食物（或運動）照片。請你進行透明、有條理的推理分析，像在跟使用者說話一樣。
+
+【回應格式要求】
+請回傳一個 JSON，包含以下欄位：
+
+1. "reasoning"：這是你對照片的自然語言推理分析（繁體中文），格式如下：
+   - 先描述「我看到的是...」（辨識食物）
+   - 再估算份量：「看起來大概是...份、...克」
+   - 給出熱量與蛋白質的估算範圍（附上估算依據）
+   - 針對這道食物的飲食特性（偏油？偏鹹？蛋白質充足？蔬菜不足？），給出 1 個具體的替代或補充建議
+   - 語氣樸實微溫，2~4 句，不要過度讚美，不用驚嘆號
+
+2. "pendingRecord"：結構化的初始估算，供使用者調整：
+   {
+     "title": "食物名稱（繁體中文）",
+     "type": "diet" 或 "exercise",
+     "estimatedValue": 熱量數字（大卡）,
+     "unit": "大卡",
+     "proteinGrams": 蛋白質克數（整數）,
+     "nutritionRough": {
+       "carbs": "偏高/適中/偏低",
+       "protein": "偏高/適中/偏低",
+       "fat": "偏高/適中/偏低",
+       "veg": "充足/不足/極少"
+     },
+     "pointsEarned": 20
+   }
+
+3. "dietAdvice"：針對這道食物的飲食建議（1~2 句），例如：「這道菜偏油，建議下一餐搭配燙青菜，或選擇蒸煮的烹調方式。」
+
+注意：estimatedValue 請給單一數字（取估算範圍的中間值）。不要輸出 Markdown，直接回傳純 JSON。`;
 
 function getGeminiClient(): GoogleGenAI {
   const rawKey = process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_Pao;
@@ -51,54 +74,20 @@ function base64ToPart(base64Str: string, mimeType: string) {
 
 export default async function handler(req: Request, res: Response) {
   try {
-    const { image, profile } = req.body || {};
+    const { image, mimeType: reqMimeType, profile } = req.body || {};
     if (!image) {
       return res.status(400).json({ error: "請提供圖片資料" });
     }
 
+    const mimeType = reqMimeType || "image/jpeg";
     const keyPresent = isApiKeyPresent();
-
-    const getMockResponse = () => {
-      const isExercise = image.includes("exercise") || Math.random() > 0.5;
-      if (isExercise) {
-        return {
-          title: "自主有氧舒展運動 🏃‍♀️",
-          type: "exercise",
-          estimatedValue: 30,
-          unit: "分鐘",
-          nutritionRough: {
-            carbs: "無直接攝取",
-            protein: "增肌必備",
-            fat: "消耗效率良好",
-            veg: "多補充電解質"
-          },
-          pointsEarned: 25,
-          coachFeedback: "哇！看見你如此熱情地活動身體，這項了不起的主動選擇就是愛你自己的最好證明！我們不限運動強度，僅此登錄誠實行動就為你帶來充滿活力的多巴胺加分！今天直接獲得 **25 點健康加分**！今天的微小加分任務：來杯 300ml 的微溫水補充代謝消耗！"
-        };
-      } else {
-        return {
-          title: "美味小點心紀錄 ☕",
-          type: "diet",
-          estimatedValue: 450,
-          unit: "大卡",
-          nutritionRough: {
-            carbs: "適量 (好活力來源)",
-            protein: "稍微偏低 (建議加顆蛋)",
-            fat: "充足 (維持腦部健康)",
-            veg: "較少 (多夾一片青菜)"
-          },
-          pointsEarned: 25,
-          coachFeedback: "哇！看到你在食物前停下、拍照並誠實記錄，這個細小的動作在原子習慣中，價值等同於 200 分的堅持！不完美也非常美味，這餐提供你源源不絕的活力多巴胺。我們今天直接獲得 **25 點健康加分**！今天的微小加分任務：來杯 300ml 的水或無糖茶，幫你新陳代謝、清除油膩，你已經做得超級棒囉！"
-        };
-      }
-    };
 
     if (keyPresent) {
       try {
         const ai = getGeminiClient();
-        const part = base64ToPart(image, "image/jpeg");
-        const contentsText = `使用者個人檔案: ${JSON.stringify(profile)}。請根據圖片分析，回傳符合 schema 的 JSON 格式。`;
-        
+        const part = base64ToPart(image, mimeType);
+        const contentsText = `使用者個人檔案: ${JSON.stringify(profile)}。請分析這張照片並回傳符合格式的 JSON。`;
+
         let response;
         const callParams = (modelName: string) => ({
           model: modelName,
@@ -108,36 +97,41 @@ export default async function handler(req: Request, res: Response) {
             responseMimeType: "application/json",
             responseSchema: {
               type: Type.OBJECT,
-              required: ["type", "estimatedValue", "unit", "nutritionRough", "pointsEarned", "coachFeedback", "title"],
+              required: ["reasoning", "pendingRecord", "dietAdvice"],
               properties: {
-                title: { type: Type.STRING },
-                type: { type: Type.STRING, enum: ["diet", "exercise"] },
-                estimatedValue: { type: Type.INTEGER },
-                unit: { type: Type.STRING },
-                nutritionRough: {
+                reasoning: { type: Type.STRING },
+                dietAdvice: { type: Type.STRING },
+                pendingRecord: {
                   type: Type.OBJECT,
-                  required: ["carbs", "protein", "fat", "veg"],
+                  required: ["title", "type", "estimatedValue", "unit", "proteinGrams", "nutritionRough", "pointsEarned"],
                   properties: {
-                    carbs: { type: Type.STRING },
-                    protein: { type: Type.STRING },
-                    fat: { type: Type.STRING },
-                    veg: { type: Type.STRING }
+                    title: { type: Type.STRING },
+                    type: { type: Type.STRING, enum: ["diet", "exercise"] },
+                    estimatedValue: { type: Type.INTEGER },
+                    unit: { type: Type.STRING },
+                    proteinGrams: { type: Type.INTEGER },
+                    nutritionRough: {
+                      type: Type.OBJECT,
+                      required: ["carbs", "protein", "fat", "veg"],
+                      properties: {
+                        carbs: { type: Type.STRING },
+                        protein: { type: Type.STRING },
+                        fat: { type: Type.STRING },
+                        veg: { type: Type.STRING }
+                      }
+                    },
+                    pointsEarned: { type: Type.INTEGER }
                   }
-                },
-                proteinGrams: { type: Type.INTEGER },
-                pointsEarned: { type: Type.INTEGER },
-                coachFeedback: { type: Type.STRING }
+                }
               }
             }
           }
         });
 
         try {
-          // 優先嘗試使用 gemini-3.5-flash 確保高水準飲食多模態圖像辨識品質
           response = await ai.models.generateContent(callParams("gemini-3.5-flash"));
         } catch (modelError: any) {
-          console.warn("⚠️ gemini-3.5-flash image analysis failed, trying gemini-3.1-flash-lite fallback:", modelError);
-          // 次要嘗試使用極速 gemini-3.1-flash-lite 做安全降級
+          console.warn("⚠️ gemini-3.5-flash failed, trying gemini-3.1-flash-lite:", modelError);
           response = await ai.models.generateContent(callParams("gemini-3.1-flash-lite"));
         }
 
@@ -147,17 +141,34 @@ export default async function handler(req: Request, res: Response) {
         }
       } catch (realAiError: any) {
         console.error("⚠️ Real Gemini Image Analyzer failed:", realAiError);
-        return res.status(500).json({ 
-          error: "AI 圖片分析失敗，已暫停 Mock 模擬", 
+        return res.status(500).json({
+          error: "AI 圖片分析失敗",
           details: realAiError.message || JSON.stringify(realAiError),
-          diagnostics: `金鑰狀態: 已設定 (長度: ${(process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_Pao)?.trim().length} 字元)`
         });
       }
     }
 
-    return res.json(getMockResponse());
+    // Mock fallback
+    return res.json({
+      reasoning: "這看起來是一份家常便當，有白飯、炒青菜和肉類。估算份量大概是一人份（約 250g），以白飯 + 炒肉的組合來看，熱量大約在 500~600 大卡之間，取中間值約 550 大卡。蛋白質部分視肉量而定，估算約 20 克。",
+      dietAdvice: "這餐蔬菜比例偏少，建議下一餐可以多加一份燙青菜，或在點餐時主動要求多配一份蔬菜。",
+      pendingRecord: {
+        title: "家常便當（示範）",
+        type: "diet",
+        estimatedValue: 550,
+        unit: "大卡",
+        proteinGrams: 20,
+        nutritionRough: {
+          carbs: "偏高",
+          protein: "適中",
+          fat: "適中",
+          veg: "不足"
+        },
+        pointsEarned: 20
+      }
+    });
   } catch (error: any) {
-    console.error("Error in Vercel image analyzer handler:", error);
+    console.error("Error in image analyzer handler:", error);
     res.status(500).json({ error: "分析圖片時發生錯誤。", details: error.message });
   }
 }
