@@ -402,9 +402,9 @@ export default function CoachChat({
 
       {/* Pending Analysis Confirmation Card */}
       {pendingAnalysis && showSaveModal && (
-        <div className="bg-white border border-emerald-200 rounded-2xl shadow-sm mb-3 overflow-hidden animate-fade-in">
+        <div className="bg-white border border-emerald-200 rounded-2xl shadow-sm mb-3 overflow-hidden animate-fade-in flex flex-col max-h-[260px] md:max-h-[300px]">
           {/* Card Header */}
-          <div className="flex items-center justify-between px-3.5 pt-3 pb-2 border-b border-emerald-100">
+          <div className="flex items-center justify-between px-3.5 pt-2 pb-1.5 border-b border-emerald-100 flex-shrink-0">
             <span className="text-xs font-bold text-emerald-800 flex items-center gap-1.5 font-sans">
               <CheckCircle2 size={13} className="text-emerald-600" />
               確認並儲存紀錄
@@ -419,7 +419,7 @@ export default function CoachChat({
             </button>
           </div>
 
-          <div className="px-3.5 py-3 flex flex-col gap-2.5">
+          <div className="px-3.5 py-2.5 flex flex-col gap-2.5 overflow-y-auto flex-1 min-h-0 text-left">
             {/* Food name */}
             <div className="flex flex-col gap-1">
               <label className="text-[10px] text-slate-500 font-semibold">食物名稱</label>
@@ -517,7 +517,10 @@ export default function CoachChat({
               數字有誤？在上方直接修改，或繼續在聊天中補充（例如「是兩人份」）再確認。
             </p>
 
-            {/* Save button */}
+          </div>
+
+          {/* Save Action - Fixed at bottom */}
+          <div className="p-2 border-t border-emerald-100 bg-slate-50 flex-shrink-0">
             <button
               type="button"
               onClick={handleSaveRecord}
