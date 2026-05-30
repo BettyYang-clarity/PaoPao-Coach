@@ -48,6 +48,7 @@ export default function HabitBoard({
   const [isGenerating, setIsGenerating] = useState(false);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [showCustomForm, setShowCustomForm] = useState(false);
+  const [activeFilterTab, setActiveFilterTab] = useState<'all' | 'diet' | 'exercise' | 'sleep' | 'water' | 'mood'>('all');
 
   // Icon mapping helper matching the precise category
   const getCategoryIcon = (category: MicroTask["category"]) => {
@@ -395,15 +396,50 @@ export default function HabitBoard({
         </form>
       )}
 
+      {/* P2-Correction: 今日原子任務分類篩選 Tab */}
+      {tasks.length > 0 && (
+        <div className="flex bg-brand-cream/60 border border-brand-border/50 p-1 rounded-xl flex-wrap gap-1">
+          {([
+            { id: "all", label: "🌐 全部" },
+            { id: "diet", label: "🥗 飲食" },
+            { id: "exercise", label: "🏃 運動" },
+            { id: "water", label: "🥛 補水" },
+            { id: "sleep", label: "🛌 睡眠" },
+            { id: "mood", label: "🌸 心靈" }
+          ] as const).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveFilterTab(tab.id)}
+              className={`flex-1 py-1 text-center text-[10.5px] tracking-wide font-sans font-bold rounded-lg cursor-pointer transition-all active:scale-95 ${
+                activeFilterTab === tab.id
+                  ? "bg-brand-green text-white shadow-2xs"
+                  : "text-brand-muted hover:text-brand-text hover:bg-white/30"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Task List (Clean minimalist layout) */}
       <div className="flex flex-col gap-3">
         {tasks.length === 0 ? (
           <div className="text-center py-6 text-brand-ash font-sans text-xs bg-brand-cream rounded-2xl border border-dashed border-brand-border px-4 font-bold">
             🌿 待辦任務空空如也。請點擊「重置待辦清單」載入挑戰。
           </div>
+        ) : tasks.filter(t => activeFilterTab === "all" || t.category === activeFilterTab).length === 0 ? (
+          <div className="text-center py-8 text-brand-muted font-sans text-xs bg-brand-cream border border-brand-border rounded-2xl flex flex-col gap-1.5 p-4 animate-fade-in">
+            <span className="text-base">☘️</span>
+            <p className="font-bold">這個分類目前沒有安排任務喔！</p>
+            <p className="text-[10px]">你可以點擊右上角「重置待辦清單」或「新增自訂」來為自己規劃微行動！💖</p>
+          </div>
         ) : (
           <div className="max-h-[310px] overflow-y-auto pr-1 flex flex-col gap-2.5 scrollbar-thin">
-            {tasks.map((task) => {
+            {tasks
+              .filter((task) => activeFilterTab === "all" || task.category === activeFilterTab)
+              .map((task) => {
               const isCompleted = task.completed;
               const { goalName, habitName, levelStr, cleanText } = parseTaskTitle(task.title);
               const isExpanded = expandedTaskId === task.id;
