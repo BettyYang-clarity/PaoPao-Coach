@@ -103,6 +103,10 @@ export default function App() {
   const [showChatModal, setShowChatModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
 
+  // Pending context from WellnessDashboard → CoachChat bridge
+  const [pendingChatFile, setPendingChatFile] = useState<File | null>(null);
+  const [pendingChatQuery, setPendingChatQuery] = useState<string | null>(null);
+
   const badges = evaluateBadges(state.records, state.profile.dailyCalorieTarget || 1600, state.microTasks, state.totalPoints);
   const unlockedBadgesCount = badges.filter(b => b.isUnlocked).length;
   const { consecutiveStreak, totalActiveDays } = getStreakInfo(state.records, state.microTasks, state.isExcused);
@@ -269,6 +273,13 @@ export default function App() {
         messages: [...prev.messages, updateCoachMessage]
       };
     });
+  };
+
+  // Navigate to chat modal with optional auto-trigger file or query
+  const handleNavigateToChat = (query?: string, file?: File) => {
+    setPendingChatQuery(query || null);
+    setPendingChatFile(file || null);
+    setShowChatModal(true);
   };
 
   // Add custom messages to feed (typically user action + AI reaction)
@@ -585,6 +596,7 @@ export default function App() {
                   onAddRecord={handleAddRecord}
                   onDeleteRecord={handleDeleteRecord}
                   onUpdateRecord={handleUpdateRecord}
+                  onNavigateToChat={handleNavigateToChat}
                 />
               </div>
             </motion.div>
@@ -651,6 +663,12 @@ export default function App() {
                   setShowChatModal(false);
                 }}
                 onAddCustomMessages={handleAddCustomMessages}
+                autoFile={pendingChatFile}
+                autoQuery={pendingChatQuery}
+                onAutoConsumed={() => {
+                  setPendingChatFile(null);
+                  setPendingChatQuery(null);
+                }}
               />
             </div>
 

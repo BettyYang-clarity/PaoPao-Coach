@@ -34,6 +34,10 @@ interface CoachChatProps {
   onImageAnalysisResult: (record: WellnessRecord) => void;
   onClearChat?: () => void;
   onAddCustomMessages?: (userMsg: ChatMessage | null, botMsg: ChatMessage) => void;
+  // Auto-trigger from WellnessDashboard
+  autoFile?: File | null;
+  autoQuery?: string | null;
+  onAutoConsumed?: () => void;
 }
 
 export default function CoachChat({
@@ -42,7 +46,10 @@ export default function CoachChat({
   onSendMessage,
   onImageAnalysisResult,
   onClearChat,
-  onAddCustomMessages
+  onAddCustomMessages,
+  autoFile,
+  autoQuery,
+  onAutoConsumed
 }: CoachChatProps) {
   const [inputText, setInputText] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -56,6 +63,19 @@ export default function CoachChat({
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isSending, pendingAnalysis]);
+
+  // Auto-trigger: file from WellnessDashboard drag-upload or query from inline consult
+  useEffect(() => {
+    if (autoFile) {
+      processImageFile(autoFile);
+      onAutoConsumed?.();
+    } else if (autoQuery) {
+      // Inject the query as a user message and fire send
+      onSendMessage(autoQuery).catch(console.error);
+      onAutoConsumed?.();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFile, autoQuery]);
 
   const handleSendText = async (e: React.FormEvent) => {
     e.preventDefault();

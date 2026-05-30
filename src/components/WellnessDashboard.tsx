@@ -42,6 +42,7 @@ interface WellnessDashboardProps {
   onAddRecord: (record: WellnessRecord) => void;
   onDeleteRecord?: (recordId: string) => void;
   onUpdateRecord?: (record: WellnessRecord) => void;
+  onNavigateToChat?: (query?: string, file?: File) => void;
 }
 
 export default function WellnessDashboard({
@@ -51,7 +52,8 @@ export default function WellnessDashboard({
   microTasks = [],
   onAddRecord,
   onDeleteRecord,
-  onUpdateRecord
+  onUpdateRecord,
+  onNavigateToChat
 }: WellnessDashboardProps) {
   // Modal toggles to split visual complexity
   const [showLogModal, setShowLogModal] = useState(false);
@@ -78,16 +80,9 @@ export default function WellnessDashboard({
   // Active logging tab inside the manual modal
   const [activeTab, setActiveTab] = useState<'diet' | 'water' | 'exercise' | 'sleep' | 'mood'>('diet');
   
-  // Image Upload Core States
-  const [imgLoading, setImgLoading] = useState(false);
-  const [imgError, setImgError] = useState<string | null>(null);
+  // Image Upload Core States - now only used for navigate-to-chat
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // AI intermediate states for user confirmation flow
-  const [aiFeedback, setAiFeedback] = useState<string | null>(null);
-  const [aiPoints, setAiPoints] = useState<number | null>(null);
-  const [aiImageUrl, setAiImageUrl] = useState<string | null>(null);
 
   // States for Diet Log
   const [dietTitle, setDietTitle] = useState("");
@@ -131,161 +126,44 @@ export default function WellnessDashboard({
 
   const [isLoading, setIsLoading] = useState(false);
 
-  // Inline PaoPao Coach consultation states
+  // Inline PaoPao Coach consultation state
   const [inlineQuery, setInlineQuery] = useState("");
-  const [inlineAnswer, setInlineAnswer] = useState("");
-  const [inlineLoading, setInlineLoading] = useState(false);
 
-  // Reset PaoPao inline consultation answer whenever tab changes
+  // Reset inline query whenever tab changes
   useEffect(() => {
     setInlineQuery("");
-    setInlineAnswer("");
-    setInlineLoading(false);
   }, [activeTab]);
 
-  // Base64 helper converter
-  const fileToBase64Mime = (file: File): Promise<{ base64: string; mimeType: string }> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64String = reader.result as string;
-        resolve({
-          base64: base64String,
-          mimeType: file.type
-        });
-      };
-      reader.onerror = (error) => reject(error);
-      reader.readAsDataURL(file);
-    });
-  };
-
-  // AI analysis caller
-  const processImageFile = async (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      setImgError("請上傳正確的圖片格式（png/jpg）檔案唷！");
-      return;
-    }
-
-    setImgLoading(true);
-    setImgError(null);
-
-    try {
-      // Utilizing high-compatibility automatic client-side compressor to support iOS memory parameters perfectly
-      const { base64, mimeType } = await compressImage(file);
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => {
-        controller.abort();
-      }, 13000); // 13 seconds timeout to prevent hanging
-
-      const res = await fetch("/api/coach/analyze-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          image: base64,
-          mimeType,
-          textDescription: "使用者上傳了一張食物照片，請給予溫和的原子習慣加分建議。",
-          profile
-        }),
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!res.ok) {
-        throw new Error("影像辨識失敗");
-      }
-
-      const apiResult = await res.json();
-      
-      // 自動切換到對應 Tab 且填寫欄位
-      setActiveTab(apiResult.type); // "diet" 或 "exercise"
-      
-      if (apiResult.type === "diet") {
-        setDietTitle(apiResult.title || "美味飲食記錄 🍱");
-        setDietKcal(apiResult.estimatedValue || "");
-        setDietProtein(apiResult.proteinGrams || "");
-      } else {
-        setExerciseTitle(apiResult.title || "活力運動記錄 🏃‍♀️");
-        setExerciseMin(apiResult.estimatedValue || "");
-        setExerciseBurnedKcal(apiResult.caloriesBurned || "");
-      }
-
-      // 儲存 AI 暫存狀態
-      setAiFeedback(apiResult.coachFeedback);
-      setAiPoints(apiResult.pointsEarned);
-      setAiImageUrl(base64);
-
-      // 自動跳出 Modal 讓使用者確認儲存！
-      setShowLogModal(true);
-
-    } catch (err: any) {
-      console.error(err);
-      setImgError("辨識服務稍微忙碌，已為您自動填充默認數據，請確認後登錄唷！💖");
-      
-      setActiveTab("diet");
-      setDietTitle("誠實記錄的美味點心 🧁");
-      setDietKcal(320);
-      setDietProtein("");
-      
-      setAiFeedback("雖然我的相機今天稍微模糊了一下，但看見你誠實拍下照片並記錄，我的原子習慣天線瞬間加滿！誠實是好習慣的第一滴雨水。直接幫你加記錄點 20 點！");
-      setAiPoints(20);
-      setAiImageUrl(null);
-      
-      setShowLogModal(true);
-    } finally {
-      setImgLoading(false);
-    }
+  // Navigate to chat with the selected file
+  const handleImageForChat = (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    onNavigateToChat?.(undefined, file);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      processImageFile(e.target.files[0]);
+      handleImageForChat(e.target.files[0]);
+      e.target.value = "";
     }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
+  const handleDragLeave = () => setIsDragging(false);
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      processImageFile(e.dataTransfer.files[0]);
+      handleImageForChat(e.dataTransfer.files[0]);
     }
   };
 
-  const handleInlineConsult = async () => {
-    if (!inlineQuery.trim() || inlineLoading) return;
-    setInlineLoading(true);
-    setInlineAnswer("");
-    try {
-      const res = await fetch("/api/coach/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: inlineQuery.trim(),
-          history: [],
-          profile
-        })
-      });
-      if (!res.ok) throw new Error("對話回傳失敗");
-      const data = await res.json();
-      setInlineAnswer(data.reply || data.text || "我已收到您的疑問囉！");
-      setInlineQuery("");
-    } catch (err) {
-      console.error(err);
-      setInlineAnswer("PaoPao教練稍微收訊不好，可以再問我一次唷！❤️");
-    } finally {
-      setInlineLoading(false);
-    }
+  // Navigate to chat with inline query
+  const handleInlineConsult = () => {
+    if (!inlineQuery.trim()) return;
+    onNavigateToChat?.(inlineQuery.trim());
+    setInlineQuery("");
   };
+
 
   // Quick hydration count helper
   const handleQuickWater = () => {
