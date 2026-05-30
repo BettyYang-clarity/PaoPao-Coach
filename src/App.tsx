@@ -328,7 +328,7 @@ export default function App() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
         controller.abort();
-      }, 10000); // 10 seconds timeout to prevent hanging
+      }, 45000); // 45 seconds timeout to accommodate model cold-starts and latency
 
       const res = await fetch("/api/coach/chat", {
         method: "POST",

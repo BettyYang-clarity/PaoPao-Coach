@@ -126,7 +126,7 @@ export default function CoachChat({
       mimeType = compressed.mimeType;
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 20000);
+      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 seconds timeout for heavy image analysis
 
       const res = await fetch("/api/coach/analyze-image", {
         method: "POST",
