@@ -56,13 +56,14 @@ export default function CoachChat({
   const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [pendingAnalysis, setPendingAnalysis] = useState<PendingAnalysis | null>(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isSending, pendingAnalysis]);
+  }, [messages, isSending, pendingAnalysis, showSaveModal]);
 
   // Auto-trigger: file from WellnessDashboard drag-upload or query from inline consult
   useEffect(() => {
@@ -181,6 +182,7 @@ export default function CoachChat({
         coachSuggestion: apiResult.coachSuggestion || "",
         nutritionRough: pending.nutritionRough
       });
+      setShowSaveModal(false);
 
     } catch (err: any) {
       console.error(err);
@@ -254,6 +256,7 @@ export default function CoachChat({
     }
 
     setPendingAnalysis(null);
+    setShowSaveModal(false);
   };
 
   // Nutrition tag color helper
@@ -362,6 +365,21 @@ export default function CoachChat({
           </div>
         )}
 
+        {pendingAnalysis && !showSaveModal && (
+          <div className="p-3 bg-emerald-50 border border-brand-green/20 rounded-2xl flex items-center justify-between gap-3 animate-fade-in mb-1">
+            <div className="flex items-center gap-2 text-emerald-800 text-[10px] font-bold font-sans">
+              <span>☘️</span>
+              <span>已估算完成！是否將「{pendingAnalysis.title}」({pendingAnalysis.estimatedValue} kcal) 儲存至今日足跡？</span>
+            </div>
+            <button
+              onClick={() => setShowSaveModal(true)}
+              className="px-3.5 py-1.5 bg-brand-green hover:bg-brand-darkgreen text-white font-sans text-[10px] font-bold rounded-xl shadow-4xs cursor-pointer active:scale-95 transition-all flex-shrink-0"
+            >
+              儲存結果
+            </button>
+          </div>
+        )}
+
         <div ref={scrollRef} />
       </div>
 
@@ -383,7 +401,7 @@ export default function CoachChat({
       )}
 
       {/* Pending Analysis Confirmation Card */}
-      {pendingAnalysis && (
+      {pendingAnalysis && showSaveModal && (
         <div className="bg-white border border-emerald-200 rounded-2xl shadow-sm mb-3 overflow-hidden animate-fade-in">
           {/* Card Header */}
           <div className="flex items-center justify-between px-3.5 pt-3 pb-2 border-b border-emerald-100">
@@ -393,9 +411,9 @@ export default function CoachChat({
             </span>
             <button
               type="button"
-              onClick={() => setPendingAnalysis(null)}
+              onClick={() => setShowSaveModal(false)}
               className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-all cursor-pointer"
-              title="取消"
+              title="收合"
             >
               <X size={11} />
             </button>
