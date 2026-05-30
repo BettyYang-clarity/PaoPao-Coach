@@ -53,6 +53,7 @@ export default function ProfileForm({
 
   const [activeSubTab, setActiveSubTab] = useState<'summary' | 'plan' | 'habits'>('summary');
   const [isSaved, setIsSaved] = useState(false);
+  const [habitFilterTab, setHabitFilterTab] = useState<'all' | 'diet' | 'exercise' | 'sleep' | 'water' | 'mood'>('all');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImportFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -843,6 +844,31 @@ export default function ProfileForm({
             </p>
           </div>
 
+          {/* P2: 微行動分類過濾 Tab 列 */}
+          <div className="flex bg-brand-cream/60 border border-brand-border p-1 rounded-xl flex-wrap gap-1">
+            {([
+              { id: 'all', label: '🌐 全部' },
+              { id: 'diet', label: '🥗 飲食' },
+              { id: 'exercise', label: '🏃 運動' },
+              { id: 'water', label: '🥛 水分' },
+              { id: 'sleep', label: '🛌 睡眠' },
+              { id: 'mood', label: '🌸 心靈' }
+            ] as const).map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setHabitFilterTab(tab.id)}
+                className={`flex-1 py-1 text-center text-[10.5px] tracking-wide font-sans font-bold rounded-lg cursor-pointer transition-all active:scale-95 ${
+                  habitFilterTab === tab.id
+                    ? "bg-brand-green text-white shadow-2xs"
+                    : "text-brand-muted hover:text-brand-text hover:bg-white/30"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
           <div className="flex flex-col gap-3.5 max-h-[500px] overflow-y-auto pr-1">
             {GOALS_DATA.filter(g => (formData.selectedGoals || []).includes(g.id)).length === 0 ? (
               <div className="p-8 text-center text-brand-muted text-xs bg-brand-cream border border-brand-border rounded-2xl flex flex-col gap-1">
@@ -850,15 +876,19 @@ export default function ProfileForm({
                 <p className="text-[10.5px]">請先切換至「📋 健康計畫設定」勾選大目標，此處將智能為您開拓微行動對應指標！💖</p>
               </div>
             ) : (
-              GOALS_DATA.filter(g => (formData.selectedGoals || []).includes(g.id)).map((goal) => (
-                <div key={goal.id} className="p-3.5 bg-white border border-brand-border rounded-2xl flex flex-col gap-3">
-                  <div className="flex items-center gap-1.5 border-b border-brand-cream pb-1.5">
-                    <span className="text-sm">🎯</span>
-                    <span className="font-sans text-xs font-bold text-brand-olive">{goal.name} (習慣解壓)</span>
-                  </div>
+              GOALS_DATA.filter(g => (formData.selectedGoals || []).includes(g.id))
+                .filter(goal => goal.habits.some(h => habitFilterTab === 'all' || h.category === habitFilterTab))
+                .map((goal) => {
+                  const filteredHabits = goal.habits.filter(h => habitFilterTab === 'all' || h.category === habitFilterTab);
+                  return (
+                    <div key={goal.id} className="p-3.5 bg-white border border-brand-border rounded-2xl flex flex-col gap-3 animate-fade-in duration-200">
+                      <div className="flex items-center gap-1.5 border-b border-brand-cream pb-1.5">
+                        <span className="text-sm">🎯</span>
+                        <span className="font-sans text-xs font-bold text-brand-olive">{goal.name} (習慣解壓)</span>
+                      </div>
 
-                  <div className="flex flex-col gap-3">
-                    {goal.habits.map((h) => {
+                      <div className="flex flex-col gap-3">
+                        {filteredHabits.map((h) => {
                       const selectedHabits = formData.selectedHabits || [];
                       const isChecked = selectedHabits.some(item => item.habitId === h.id);
                       const habitConfig = selectedHabits.find(item => item.habitId === h.id);
@@ -932,8 +962,9 @@ export default function ProfileForm({
                     })}
                   </div>
                 </div>
-              ))
-            )}
+              );
+            })
+          )}
           </div>
 
           {/* Action Footer */}
