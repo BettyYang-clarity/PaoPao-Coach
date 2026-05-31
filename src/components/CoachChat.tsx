@@ -156,25 +156,8 @@ export default function CoachChat({
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isSending, pendingAnalysis, showSaveModal]);
 
-  // Auto-trigger: file from WellnessDashboard drag-upload or query from inline consult
-  useEffect(() => {
-    if (autoFile) {
-      processImageFile(autoFile);
-      onAutoConsumed?.();
-    } else if (autoQuery) {
-      // Inject the query as a user message and fire send
-      onSendMessage(autoQuery).catch(console.error);
-      onAutoConsumed?.();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoFile, autoQuery]);
-
-  const handleSendText = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputText.trim() || isSending) return;
-
-    const textToSubmit = inputText.trim();
-    setInputText("");
+  const submitTextMessage = async (textToSubmit: string) => {
+    if (!textToSubmit.trim() || isSending) return;
     setIsSending(true);
 
     try {
@@ -212,6 +195,28 @@ export default function CoachChat({
       setIsSending(false);
     }
   };
+
+  const handleSendText = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputText.trim() || isSending) return;
+
+    const textToSubmit = inputText.trim();
+    setInputText("");
+    await submitTextMessage(textToSubmit);
+  };
+
+  // Auto-trigger: file from WellnessDashboard drag-upload or query from inline consult
+  useEffect(() => {
+    if (autoFile) {
+      processImageFile(autoFile);
+      onAutoConsumed?.();
+    } else if (autoQuery) {
+      // Inject the query as a user message and fire send through full pipeline
+      submitTextMessage(autoQuery).catch(console.error);
+      onAutoConsumed?.();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFile, autoQuery]);
 
   const fileToBase64Mime = (file: File): Promise<{ base64: string; mimeType: string }> => {
     return new Promise((resolve, reject) => {
