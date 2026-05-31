@@ -679,7 +679,8 @@ export async function handleSuggestTasks(req: any, res: any) {
           category: foundHabit.category,
           completed: false,
           points: sh.level === 1 ? 15 : sh.level === 2 ? 25 : 35,
-          suggestion: foundHabit.suggestion
+          suggestion: foundHabit.suggestion,
+          anchorHabit: sh.anchorHabit
          });
       }
     });
