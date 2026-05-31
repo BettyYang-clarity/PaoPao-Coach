@@ -123,10 +123,9 @@ export default async function handler(req: Request, res: Response) {
         });
 
         try {
-          response = await ai.models.generateContent(callParams("gemini-3.5-flash"));
+          response = await ai.models.generateContent(callParams("gemini-2.5-flash"));
         } catch (modelError: any) {
-          console.warn("⚠️ gemini-3.5-flash failed, trying gemini-3.1-flash-lite fallback:", modelError);
-          response = await ai.models.generateContent(callParams("gemini-3.1-flash-lite"));
+          throw modelError;
         }
 
         if (response && response.text) {

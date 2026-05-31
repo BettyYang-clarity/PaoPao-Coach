@@ -274,10 +274,9 @@ ${message}`;
         });
 
         try {
-          response = await ai.models.generateContent(callParams("gemini-3.5-flash"));
-        } catch (modelError: any) {
-          console.warn("⚠️ gemini-3.5-flash failed, trying gemini-2.5-flash fallback:", modelError);
           response = await ai.models.generateContent(callParams("gemini-2.5-flash"));
+        } catch (modelError: any) {
+          throw modelError;
         }
 
         if (response && response.text) {
