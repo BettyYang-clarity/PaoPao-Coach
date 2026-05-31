@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+
 import React, { useState, useRef, useEffect } from "react";
 import { ChatMessage, UserProfile, WellnessRecord } from "../types";
-import { Send, Image, Loader2, Sparkles, AlertCircle, X, CheckCircle2 } from "lucide-react";
+import { Send, Image, Loader2, Sparkles, AlertCircle, X, CheckCircle2, Mic, MicOff } from "lucide-react";
 import { compressImage } from "../lib/imageCompress";
 
 interface PendingAnalysis {
@@ -151,10 +152,60 @@ export default function CoachChat({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [pendingAnalysis, setPendingAnalysis] = useState<PendingAnalysis | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [isListening, setIsListening] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
 
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const rec = new SpeechRecognition();
+      rec.continuous = false;
+      rec.interimResults = false;
+      rec.lang = "zh-TW"; // Standard Traditional Chinese
+
+      rec.onstart = () => {
+        setIsListening(true);
+      };
+
+      rec.onend = () => {
+        setIsListening(false);
+      };
+
+      rec.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        if (transcript) {
+          setInputText((prev) => prev + transcript);
+        }
+      };
+
+      rec.onerror = (event: any) => {
+        console.error("Speech recognition error:", event.error);
+        setIsListening(false);
+      };
+
+      recognitionRef.current = rec;
+    }
+  }, []);
+
+  const handleVoiceInput = () => {
+    if (!recognitionRef.current) {
+      alert("抱歉，您的瀏覽器目前不支援語音辨識（推薦使用 Chrome 或是 Safari 瀏覽器喔！）。");
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      try {
+        recognitionRef.current.start();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isSending, pendingAnalysis, showSaveModal]);
@@ -717,17 +768,47 @@ export default function CoachChat({
 
       {/* Input Form */}
       <form onSubmit={handleSendText} className="flex gap-2">
-        <input
-          type="text"
-          className="flex-1 px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl font-sans text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-100/50 focus:bg-white"
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          placeholder={pendingAnalysis ? "告訴我份量或調整資訊，例如「這是兩人份」..." : "輸入食物、運動或諮詢健康問題..."}
-          disabled={isSending}
-        />
+        <div className="relative flex-1">
+          <input
+            type="text"
+            className={`w-full pl-4 pr-10 py-3 bg-slate-50 border rounded-2xl font-sans text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-100/50 focus:bg-white transition-all duration-300 ${
+              isListening 
+                ? "border-emerald-500 ring-2 ring-emerald-100 shadow-[0_0_10px_rgba(16,185,129,0.2)]" 
+                : "border-slate-100"
+            }`}
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            placeholder={
+              isListening
+                ? "正在聆聽語音中，請說話..."
+                : pendingAnalysis
+                ? "告訴我份量或調整資訊，例如「這是兩人份」..."
+                : "輸入食物、運動或諮詢健康問題..."
+            }
+            disabled={isSending}
+          />
+          {/* Micro-animated Voice input button inside the input field */}
+          <button
+            type="button"
+            onClick={handleVoiceInput}
+            disabled={isSending}
+            className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full transition-all duration-300 cursor-pointer active:scale-90 flex items-center justify-center ${
+              isListening
+                ? "bg-red-500 text-white animate-pulse"
+                : "text-slate-400 hover:text-slate-600 hover:bg-slate-200/50"
+            }`}
+            title={isListening ? "停止錄音" : "語音輸入"}
+          >
+            {isListening ? (
+              <MicOff size={13} className="flex-shrink-0" />
+            ) : (
+              <Mic size={13} className="flex-shrink-0" />
+            )}
+          </button>
+        </div>
         <button
           type="submit"
-          disabled={isSending || !inputText.trim()}
+          disabled={isSending || !inputText.trim() || isListening}
           className="px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl cursor-pointer disabled:opacity-50 transition-all active:scale-[0.96] flex items-center justify-center shadow-xs flex-shrink-0"
         >
           <Send size={14} className="flex-shrink-0" />
