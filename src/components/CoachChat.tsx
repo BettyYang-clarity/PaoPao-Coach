@@ -40,6 +40,84 @@ interface CoachChatProps {
   onAutoConsumed?: () => void;
 }
 
+// Frontend fallback parser to dynamically extract nutrition metrics from coach replies
+function extractNutritionFromText(text: string, titleDefault: string) {
+  const lowerText = text.toLowerCase();
+  
+  // 1. Detect if it relates to diet or exercise
+  const isDiet = lowerText.includes("大卡") || lowerText.includes("kcal") || lowerText.includes("卡路里") || lowerText.includes("吃") || lowerText.includes("喝") || lowerText.includes("餐") || lowerText.includes("蛋");
+  const isExercise = lowerText.includes("分鐘") || lowerText.includes("met") || lowerText.includes("運動") || lowerText.includes("活動");
+  
+  if (!isDiet && !isExercise) return null;
+  
+  const type = isDiet ? "diet" : "exercise";
+  
+  // 2. Extract calories or duration
+  let estimatedValue = 0;
+  const kcalMatch = text.match(/(\d+)\s*(?:大卡|kcal|卡路里|卡)/i);
+  if (kcalMatch) {
+    estimatedValue = parseInt(kcalMatch[1]);
+  } else {
+    const minsMatch = text.match(/(\d+)\s*(?:分鐘|分)/);
+    if (minsMatch) {
+      estimatedValue = parseInt(minsMatch[1]);
+    }
+  }
+  
+  if (estimatedValue === 0) return null;
+  
+  // 3. Extract protein
+  let proteinGrams = 0;
+  const proteinMatch = text.match(/(\d+(?:\.\d+)?)\s*(?:公克|克|g)/i);
+  if (proteinMatch) {
+    proteinGrams = Math.round(parseFloat(proteinMatch[1]));
+  }
+  
+  // 4. Rough calculation for carbs and fat
+  let carbsGrams = 0;
+  let fatGrams = 0;
+  if (type === "diet") {
+    carbsGrams = Math.round((estimatedValue * 0.5) / 4);
+    fatGrams = Math.round((estimatedValue * 0.3) / 9);
+    if (proteinGrams > 0) {
+      const remainingKcal = estimatedValue - (proteinGrams * 4);
+      if (remainingKcal > 0) {
+        carbsGrams = Math.round((remainingKcal * 0.6) / 4);
+        fatGrams = Math.round((remainingKcal * 0.4) / 9);
+      }
+    }
+  }
+  
+  // 5. Extract specific title
+  let title = titleDefault || (isDiet ? "今日美味餐飲" : "今日身體活動");
+  title = title.replace(/我剛吃了|我吃了|吃了|我想吃|吃|喝了|喝|熱量是多少|熱量|多少大卡|是多少|多少/g, "").trim();
+  if (!title || title.length > 15) {
+    title = isDiet ? "今日美味餐飲" : "今日身體活動";
+  }
+
+  const titleMatch = text.match(/【([^】]+)】/);
+  if (titleMatch) {
+    title = titleMatch[1];
+  }
+  
+  return {
+    type,
+    title,
+    estimatedValue,
+    unit: type === "diet" ? "大卡" : "分鐘",
+    proteinGrams,
+    carbsGrams,
+    fatGrams,
+    pointsEarned: 25,
+    nutritionRough: {
+      carbs: carbsGrams > 0 ? `${carbsGrams}g` : "適量",
+      protein: proteinGrams > 0 ? `${proteinGrams}g` : "充足",
+      fat: fatGrams > 0 ? `${fatGrams}g` : "充足",
+      veg: "適量"
+    }
+  };
+}
+
 export default function CoachChat({
   messages,
   profile,
@@ -88,22 +166,30 @@ export default function CoachChat({
 
     try {
       const apiResult: any = await onSendMessage(textToSubmit);
-      if (apiResult && apiResult.pendingRecord) {
-        const pending = apiResult.pendingRecord;
-        setPendingAnalysis({
-          type: pending.type || "diet",
-          title: pending.title || textToSubmit,
-          estimatedValue: pending.estimatedValue || 0,
-          proteinGrams: pending.proteinGrams || 0,
-          carbsGrams: pending.carbsGrams || 0,
-          fatGrams: pending.fatGrams || 0,
-          unit: pending.unit || "大卡",
-          base64: "", // No image base64 for text-based input
-          pointsEarned: pending.pointsEarned || 25,
-          coachSuggestion: apiResult.reply || pending.coachSuggestion || "",
-          nutritionRough: pending.nutritionRough
-        });
-        setShowSaveModal(false);
+      if (apiResult) {
+        let pending = apiResult.pendingRecord;
+        
+        // Defensive Frontend extraction in case backend returns plain text or lacks pendingRecord
+        if (!pending && apiResult.reply) {
+          pending = extractNutritionFromText(apiResult.reply, textToSubmit);
+        }
+
+        if (pending) {
+          setPendingAnalysis({
+            type: pending.type || "diet",
+            title: pending.title || textToSubmit,
+            estimatedValue: pending.estimatedValue || 0,
+            proteinGrams: pending.proteinGrams || 0,
+            carbsGrams: pending.carbsGrams || 0,
+            fatGrams: pending.fatGrams || 0,
+            unit: pending.unit || "大卡",
+            base64: "", // No image base64 for text-based input
+            pointsEarned: pending.pointsEarned || 25,
+            coachSuggestion: apiResult.reply || pending.coachSuggestion || "",
+            nutritionRough: pending.nutritionRough
+          });
+          setShowSaveModal(false);
+        }
       }
     } catch (err: any) {
       console.error(err);
