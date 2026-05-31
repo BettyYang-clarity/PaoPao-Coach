@@ -247,16 +247,27 @@ export default function HabitBoard({
   const completedTasks = tasks.filter((t) => t.completed).length;
   const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
+  const getProgressHeadline = () => {
+    if (totalTasks === 0) return "🌱 待辦小清單正等待著你的全新啟航喔";
+    if (completedTasks === 0) {
+      return "🌱 我的健康花園：今天也是溫和前行的起點，等待我們種下第一個小習慣 🌿";
+    }
+    if (completionPercentage === 100) {
+      return `🎉 完美的一天！今日原子成長花園已開滿花朵，累積了全數 ${completedTasks} 項自律勝利！🌸`;
+    }
+    return `✨ 今日已累積 ${completedTasks} 次「1% 的微小勝利」！你的自我認同正默默改變 🌿`;
+  };
+
   const getEncouragementMessage = () => {
     if (totalTasks === 0) return "今日還沒有安排任務喔，點擊「重置待辦清單」開始吧！☘️";
     if (completionPercentage === 0) {
       return "今天也是全新的原子習慣起點！不急不急，準備跨出小小的第一步，你就是自己的滿分教練 ☘️";
     }
     if (completionPercentage < 40) {
-      return `哇！你已經點亮了第 ${completedTasks} 個微原子習慣！每天累積 1% 的複利，正在你的體內發芽茁壯喔，超棒的！👏`;
+      return `哇！你已經成功灌溉了第 ${completedTasks} 個微原子習慣！每天累積 1% 的行為複利，正在你的體內發芽茁壯喔，超棒的！👏`;
     }
     if (completionPercentage < 100) {
-      return `太厲害了！你已經達成了今日的 ${completedTasks}/${totalTasks} 項任務！大腦的阻力已經徹底被你克服了，溫和前行，為自己鼓掌！✨`;
+      return `太厲害了！你已經達成了今日的 ${completedTasks}/${totalTasks} 項自律行動！大腦的阻力已經徹底被你克服了，溫和前行，為自己鼓掌！✨`;
     }
     return `🎉 恭喜你！今日原子任務全數達成 (${completedTasks}/${totalTasks})！你用最低磨損的堅持完成了對自己的承諾，你是最棒的原子習慣大師！❤️`;
   };
@@ -324,15 +335,17 @@ export default function HabitBoard({
 
       {/* 頂部任務完成進度及動態同理心鼓勵詞橫幅 */}
       {totalTasks > 0 && (
-        <div className={`border rounded-2xl p-4 flex flex-col gap-2.5 shadow-4xs transition-all duration-300 ${
+        <div className={`border rounded-[24px] p-4.5 flex flex-col gap-3 shadow-4xs transition-all duration-300 ${
           isExcused 
             ? "bg-[#FCF9F2] border-amber-300 text-amber-900" 
             : "bg-[#FAF7F2] border-brand-border/60 text-[#5C564A]"
         }`}>
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold flex items-center gap-1.5">
+            <span className="text-[10.5px] font-extrabold flex items-center gap-1.5 font-sans leading-none">
               <Award size={13} className={isExcused ? "text-amber-600 animate-bounce" : "text-brand-green animate-pulse"} />
-              今日原子任務進度：{completedTasks} / {totalTasks} ({completionPercentage}%)
+              {isExcused 
+                ? "🛡️ 我的自律花園：特赦盾牌防護中 (今天安心休息充電唷！)" 
+                : getProgressHeadline()}
             </span>
             {isExcused && (
               <span className="text-[8.5px] font-sans font-bold px-1.5 py-0.5 bg-amber-100 text-amber-800 border border-amber-250 rounded-md leading-none animate-pulse">
@@ -340,14 +353,24 @@ export default function HabitBoard({
               </span>
             )}
           </div>
-          {/* 高質感進度條 */}
-          <div className="w-full bg-[#EAE3D2]/55 h-2 rounded-full overflow-hidden">
+          
+          {/* 高質感植物灌溉能量槽 */}
+          <div className="w-full bg-[#EAE3D2]/45 h-3 rounded-full overflow-hidden relative shadow-inner">
             <div
-              className={`h-full rounded-full transition-all duration-500 ease-out ${
-                isExcused ? "bg-amber-500" : "bg-brand-green"
+              className={`h-full rounded-full transition-all duration-500 ease-out relative ${
+                isExcused 
+                  ? "bg-gradient-to-r from-amber-400 to-amber-500" 
+                  : "bg-gradient-to-r from-emerald-400 to-brand-green"
               }`}
               style={{ width: `${completionPercentage}%` }}
-            />
+            >
+              {/* Floating growing plant or shield emoji at the tip of the energy level */}
+              {completionPercentage > 0 && (
+                <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px] animate-bounce select-none">
+                  {isExcused ? "🛡️" : "🌱"}
+                </span>
+              )}
+            </div>
           </div>
           <p className="text-[10.5px] leading-relaxed font-medium font-sans mt-0.5">
             {isExcused 
