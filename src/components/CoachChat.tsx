@@ -508,7 +508,9 @@ export default function CoachChat({
               <span>☘️</span>
               <span>
                 已估算完成！是否將「{pendingAnalysis.title}」
-                ({pendingAnalysis.type === "exercise" ? `${pendingAnalysis.estimatedValue} 分鐘` : `${pendingAnalysis.estimatedValue} kcal`}) 
+                ({pendingAnalysis.type === "exercise" 
+                  ? `${pendingAnalysis.estimatedValue} 分鐘，約 ${pendingAnalysis.caloriesBurned || 0} kcal` 
+                  : `${pendingAnalysis.estimatedValue} kcal`}) 
                 儲存至今日足跡？
               </span>
             </div>
