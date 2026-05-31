@@ -46,6 +46,86 @@ function cleanAndParseJson(rawText: string) {
   return JSON.parse(cleanText.trim());
 }
 
+// Regex-based fallback extractor to parse nutrition values from raw coach reply text
+function extractPendingRecordFromText(text: string, titleDefault: string) {
+  const lowerText = text.toLowerCase();
+  
+  // 1. Detect if it relates to diet or exercise
+  const isDiet = lowerText.includes("大卡") || lowerText.includes("kcal") || lowerText.includes("卡路里") || lowerText.includes("吃") || lowerText.includes("喝") || lowerText.includes("餐") || lowerText.includes("蛋");
+  const isExercise = lowerText.includes("分鐘") || lowerText.includes("met") || lowerText.includes("運動") || lowerText.includes("活動");
+  
+  if (!isDiet && !isExercise) return null;
+  
+  const type = isDiet ? "diet" : "exercise";
+  
+  // 2. Extract calories or exercise duration
+  let estimatedValue = 0;
+  const kcalMatch = text.match(/(\d+)\s*(?:大卡|kcal|卡路里|卡)/i);
+  if (kcalMatch) {
+    estimatedValue = parseInt(kcalMatch[1]);
+  } else {
+    const minsMatch = text.match(/(\d+)\s*(?:分鐘|分)/);
+    if (minsMatch) {
+      estimatedValue = parseInt(minsMatch[1]);
+    }
+  }
+  
+  if (estimatedValue === 0) return null;
+  
+  // 3. Extract protein
+  let proteinGrams = 0;
+  const proteinMatch = text.match(/(\d+(?:\.\d+)?)\s*(?:公克|克|g)/i);
+  if (proteinMatch) {
+    proteinGrams = Math.round(parseFloat(proteinMatch[1]));
+  }
+  
+  // 4. Calculate rough carbs and fat based on calorie allocation formulas
+  let carbsGrams = 0;
+  let fatGrams = 0;
+  if (type === "diet") {
+    carbsGrams = Math.round((estimatedValue * 0.5) / 4);
+    fatGrams = Math.round((estimatedValue * 0.3) / 9);
+    if (proteinGrams > 0) {
+      const remainingKcal = estimatedValue - (proteinGrams * 4);
+      if (remainingKcal > 0) {
+        carbsGrams = Math.round((remainingKcal * 0.6) / 4);
+        fatGrams = Math.round((remainingKcal * 0.4) / 9);
+      }
+    }
+  }
+  
+  // 5. Extract specific food or exercise titles from text
+  let title = titleDefault || (isDiet ? "今日美味餐飲" : "今日身體活動");
+  
+  // Strip out prefix words if matching default message structure
+  title = title.replace(/我剛吃了|我吃了|吃了|我想吃|吃|喝了|喝|熱量是多少|熱量|多少大卡|是多少|多少/g, "").trim();
+  if (!title || title.length > 15) {
+    title = isDiet ? "今日美味餐飲" : "今日身體活動";
+  }
+
+  const titleMatch = text.match(/【([^】]+)】/);
+  if (titleMatch) {
+    title = titleMatch[1];
+  }
+  
+  return {
+    type,
+    title,
+    estimatedValue,
+    unit: type === "diet" ? "大卡" : "分鐘",
+    proteinGrams: proteinGrams || undefined,
+    carbsGrams: carbsGrams || undefined,
+    fatGrams: fatGrams || undefined,
+    pointsEarned: 25,
+    nutritionRough: {
+      carbs: carbsGrams > 0 ? `${carbsGrams}g` : "適量",
+      protein: proteinGrams > 0 ? `${proteinGrams}g` : "充足",
+      fat: fatGrams > 0 ? `${fatGrams}g` : "充足",
+      veg: "適量"
+    }
+  };
+}
+
 const COACH_SYSTEM_PROMPT = `你是一位充滿溫度、溫和且高度同理心的 PaoPao健康養成教練（簡稱 PaoPao教練）。你深諳「行為心理學」與「原子習慣」原理，且具備大眾健康飲食及身體活動指引常識。
 
 你的核心角色與規範：
@@ -212,18 +292,39 @@ ${message}`;
         if (response && response.text) {
           try {
             const result = cleanAndParseJson(response.text);
+            // If result has no pendingRecord but has reply, try to defensively extract it from text
+            if (result && !result.pendingRecord && result.reply) {
+              const extracted = extractPendingRecordFromText(result.reply, message);
+              if (extracted) {
+                result.pendingRecord = extracted;
+              }
+            }
             return res.json(result);
           } catch (jsonErr) {
             console.warn("⚠️ Failed to parse JSON from AI coach chat response:", jsonErr);
+            
             // Defensively attempt regex JSON extract if text is noisy
             try {
               const jsonMatch = response.text.match(/\{[\s\S]*\}/);
               if (jsonMatch) {
                 const result = JSON.parse(jsonMatch[0].trim());
+                if (result && !result.pendingRecord && result.reply) {
+                  const extracted = extractPendingRecordFromText(result.reply, message);
+                  if (extracted) {
+                    result.pendingRecord = extracted;
+                  }
+                }
                 return res.json(result);
               }
             } catch (_) {}
-            return res.json({ reply: response.text });
+            
+            // Defensively extract record from raw plain text if AI failed to return JSON completely
+            const fallbackResult: any = { reply: response.text };
+            const extracted = extractPendingRecordFromText(response.text, message);
+            if (extracted) {
+              fallbackResult.pendingRecord = extracted;
+            }
+            return res.json(fallbackResult);
           }
         }
       } catch (realAiError: any) {
