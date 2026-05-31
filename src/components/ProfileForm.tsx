@@ -250,6 +250,26 @@ export default function ProfileForm({
     }
   };
 
+  // Helper to set anchorHabit (Habit Stacking)
+  const handleSetHabitAnchor = (habitId: string, anchorHabit: string) => {
+    const currentHabits = formData.selectedHabits || [];
+    const exists = currentHabits.some(item => item.habitId === habitId);
+
+    if (exists) {
+      setFormData(prev => ({
+        ...prev,
+        selectedHabits: (prev.selectedHabits || []).map(item =>
+          item.habitId === habitId ? { ...item, anchorHabit: anchorHabit || undefined } : item
+        )
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        selectedHabits: [...(prev.selectedHabits || []), { habitId, level: 1, anchorHabit: anchorHabit || undefined }]
+      }));
+    }
+  };
+
   const getCategoryTheme = (category: string) => {
     switch (category) {
       case "diet":
@@ -944,6 +964,54 @@ export default function ProfileForm({
                               );
                             })}
                           </div>
+
+                          {/* P4: 習慣疊加生活錨點定錨區 */}
+                          {isChecked && (
+                            <div className="flex flex-col gap-1.5 pt-1.5 border-t border-brand-border-light/45">
+                              <span className="text-[9.5px] font-sans font-bold text-brand-muted flex items-center gap-1">
+                                🔗 習慣疊加生活錨點（減脂高頻黃金時機）
+                              </span>
+                              <div className="flex flex-wrap gap-1">
+                                {([
+                                  { id: "🌅 剛清晨起床時", label: "🌅 起床時" },
+                                  { id: "🤤 感到肚子餓時", label: "🤤 肚子餓" },
+                                  { id: "🍽️ 準備吃正餐前", label: "🍽️ 吃正餐前" },
+                                  { id: "🥢 正餐剛吃飽後", label: "🥢 正餐剛飽" },
+                                  { id: "☕ 下午口渴昏沈時", label: "☕ 下午昏沈" },
+                                  { id: "🛌 晚上睡前兩小時", label: "🛌 睡前兩小時" }
+                                ] as const).map((anchor) => {
+                                  const isSelected = habitConfig?.anchorHabit === anchor.id;
+                                  return (
+                                    <button
+                                      key={anchor.id}
+                                      type="button"
+                                      onClick={() => handleSetHabitAnchor(h.id, isSelected ? "" : anchor.id)}
+                                      className={`px-2 py-0.5 text-[9px] font-sans font-bold rounded-lg cursor-pointer border transition-all active:scale-95 ${
+                                        isSelected
+                                          ? "bg-brand-green/10 border-brand-green text-brand-green shadow-3xs"
+                                          : "bg-white border-brand-border-light/60 text-brand-muted hover:bg-brand-cream/60"
+                                      }`}
+                                      title={anchor.id}
+                                    >
+                                      {anchor.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              
+                              {/* 自訂錨點輸入框 */}
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-[9px] text-[#A39B8D] flex-shrink-0">✍️ 自訂：</span>
+                                <input
+                                  type="text"
+                                  className="flex-1 min-w-0 px-2 py-0.5 bg-white border border-brand-border-light rounded-md text-[9.5px] font-sans text-brand-text outline-hidden focus:border-brand-green/45 focus:ring-1 focus:ring-brand-green/15"
+                                  value={habitConfig?.anchorHabit || ""}
+                                  onChange={(e) => handleSetHabitAnchor(h.id, e.target.value)}
+                                  placeholder="例如：早上刷完牙後、洗澡準備躺平前..."
+                                />
+                              </div>
+                            </div>
+                          )}
 
                           {/* Description text */}
                           <div className="bg-brand-cream/40 p-2 rounded-lg border border-brand-border-light/40 flex flex-col gap-0.5 select-all">

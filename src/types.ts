@@ -19,7 +19,7 @@ export interface UserProfile {
   dailyReminderTime?: string; // e.g. "09:00"
   selectedGuidelines?: string[]; // Keep for compatibility
   selectedGoals?: string[]; // Selected Goal IDs from the 7 options
-  selectedHabits?: Array<{ habitId: string; level: 1 | 2 | 3 }>; // Selected Atomic Habits with user Chosen Levels (1-3)
+  selectedHabits?: Array<{ habitId: string; level: 1 | 2 | 3; anchorHabit?: string }>; // Selected Atomic Habits with user Chosen Levels (1-3) and custom anchorHabit stacking
 }
 
 export interface WellnessRecord {
@@ -53,6 +53,7 @@ export interface MicroTask {
   points: number;
   completedAt?: string;
   suggestion: string; // High-empathy encouraging line
+  anchorHabit?: string; // Stacking lifestyle anchor hint (e.g. "🤤 感到肚子餓時")
 }
 
 export interface ChatMessage {

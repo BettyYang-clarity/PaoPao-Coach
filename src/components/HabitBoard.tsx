@@ -168,7 +168,8 @@ export default function HabitBoard({
             category: foundHabit.category,
             completed: false,
             points: sh.level === 1 ? 15 : sh.level === 2 ? 25 : 35, // More points for higher difficulty
-            suggestion: foundHabit.suggestion
+            suggestion: foundHabit.suggestion,
+            anchorHabit: sh.anchorHabit
           });
         }
       });
@@ -454,6 +455,15 @@ export default function HabitBoard({
                       : "bg-white border-brand-border hover:border-brand-green/30 shadow-4xs"
                   }`}
                 >
+                  {/* P4: 習慣疊加雙向膠囊 */}
+                  {task.anchorHabit && (
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-brand-green/5 hover:bg-brand-green/10 border border-brand-green/20 rounded-xl self-start text-[9.5px] font-sans font-bold text-brand-green select-none tracking-wide animate-fade-in shadow-3xs mb-0.5">
+                      <span className="flex items-center gap-1">🔗 生活錨點：{task.anchorHabit}</span>
+                      <span className="text-[#A3D0B5]">➔</span>
+                      <span className="flex items-center gap-0.5">🌿 原子任務：{habitName}</span>
+                    </div>
+                  )}
+
                   <div className="flex items-start gap-3">
                     {/* Completion Check Box */}
                     <button
@@ -502,9 +512,15 @@ export default function HabitBoard({
                       </div>
 
                       {/* 👉 行動目標: Positioned fully underneath the header to maximize space usage */}
-                      <p className={`font-sans text-[11.5px] leading-relaxed mt-0.5 ${isCompleted ? 'text-brand-ash/60 line-through font-normal' : 'text-brand-text font-bold'}`}>
-                        👉 行動目標：{cleanText}
-                      </p>
+                      {task.anchorHabit ? (
+                        <p className={`font-sans text-[11.5px] leading-relaxed mt-0.5 ${isCompleted ? 'text-brand-ash/60 line-through font-normal' : 'text-brand-text font-bold'}`}>
+                          👉 <span className="text-brand-green font-extrabold bg-brand-green/5 px-1 py-0.5 rounded mr-1">習慣疊加公式</span>：當我 <strong className="text-brand-olive underline underline-offset-3 decoration-dotted">{task.anchorHabit}</strong> 時，我會立刻 <strong className="text-emerald-800">{cleanText}</strong>！🌿
+                        </p>
+                      ) : (
+                        <p className={`font-sans text-[11.5px] leading-relaxed mt-0.5 ${isCompleted ? 'text-brand-ash/60 line-through font-normal' : 'text-brand-text font-bold'}`}>
+                          👉 行動目標：{cleanText}
+                        </p>
+                      )}
                       {isCompleted && (
                         <p className="font-sans text-[10px] text-brand-green/85 font-extrabold italic mt-1.5 animate-fade-in flex items-center gap-1 select-none">
                           🧘 認同定錨：{getIdentityAffirmation(task.category)}
