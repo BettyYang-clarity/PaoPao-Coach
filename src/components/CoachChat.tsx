@@ -185,7 +185,7 @@ export default function CoachChat({
             nutritionRough: pending.nutritionRough,
             caloriesBurned: pending.caloriesBurned || (pending.type === "exercise" ? Math.round((pending.estimatedValue || 0) * 6.5) : undefined)
           });
-          setShowSaveModal(true);
+          setShowSaveModal(false);
         }
       }
     } catch (err: any) {
@@ -308,7 +308,7 @@ export default function CoachChat({
         nutritionRough: pending.nutritionRough,
         caloriesBurned: pending.caloriesBurned || (pending.type === "exercise" ? Math.round((pending.estimatedValue || 0) * 6.5) : undefined)
       });
-      setShowSaveModal(true);
+      setShowSaveModal(false);
 
     } catch (err: any) {
       console.error(err);
