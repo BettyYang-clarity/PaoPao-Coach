@@ -56,17 +56,7 @@ function extractNutritionFromText(text: string, titleDefault: string) {
   
   // 2. Extract calories or duration
   let estimatedValue = 0;
-  const kcalMatch = text.match(/(\d+)\s*(?:大卡|kcal|卡路里|卡)/i);
-  if (kcalMatch) {
-    estimatedValue = parseInt(kcalMatch[1]);
-  } else {
-    const minsMatch = text.match(/(\d+)\s*(?:分鐘|分)/);
-    if (minsMatch) {
-      estimatedValue = parseInt(minsMatch[1]);
-    }
-  }
-  
-  if (estimatedValue === 0) return null;
+  let caloriesBurned = undefined;
   
   // 3. Extract protein
   let proteinGrams = 0;
@@ -75,12 +65,18 @@ function extractNutritionFromText(text: string, titleDefault: string) {
     proteinGrams = Math.round(parseFloat(proteinMatch[1]));
   }
   
-  // 4. Rough calculation for carbs and fat, and caloriesBurned for exercise
+  // 4. Calculate rough carbs and fat based on calorie allocation formulas, and caloriesBurned for exercise
   let carbsGrams = 0;
   let fatGrams = 0;
-  let caloriesBurned = undefined;
   
   if (type === "diet") {
+    const kcalMatch = text.match(/(\d+)\s*(?:大卡|kcal|卡路里|卡)/i);
+    if (kcalMatch) {
+      estimatedValue = parseInt(kcalMatch[1]);
+    } else {
+      estimatedValue = 250; // 預設 250 大卡
+    }
+    
     carbsGrams = Math.round((estimatedValue * 0.5) / 4);
     fatGrams = Math.round((estimatedValue * 0.3) / 9);
     if (proteinGrams > 0) {
@@ -91,7 +87,14 @@ function extractNutritionFromText(text: string, titleDefault: string) {
       }
     }
   } else {
-    // For exercise: estimatedValue is minutes. Calculate calories burned if not explicitly in text.
+    // For exercise: estimatedValue is minutes.
+    const minsMatch = text.match(/(\d+)\s*(?:分鐘|分)/);
+    if (minsMatch) {
+      estimatedValue = parseInt(minsMatch[1]);
+    } else {
+      estimatedValue = 30; // 預設 30 分鐘
+    }
+    
     const burnedMatch = text.match(/(\d+)\s*(?:大卡|kcal|卡路里|卡)/i);
     if (burnedMatch) {
       caloriesBurned = parseInt(burnedMatch[1]);

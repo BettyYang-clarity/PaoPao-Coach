@@ -61,17 +61,7 @@ function extractPendingRecordFromText(text: string, titleDefault: string) {
   
   // 2. Extract calories or exercise duration
   let estimatedValue = 0;
-  const kcalMatch = text.match(/(\d+)\s*(?:大卡|kcal|卡路里|卡)/i);
-  if (kcalMatch) {
-    estimatedValue = parseInt(kcalMatch[1]);
-  } else {
-    const minsMatch = text.match(/(\d+)\s*(?:分鐘|分)/);
-    if (minsMatch) {
-      estimatedValue = parseInt(minsMatch[1]);
-    }
-  }
-  
-  if (estimatedValue === 0) return null;
+  let caloriesBurned = undefined;
   
   // 3. Extract protein
   let proteinGrams = 0;
@@ -83,9 +73,15 @@ function extractPendingRecordFromText(text: string, titleDefault: string) {
   // 4. Calculate rough carbs and fat based on calorie allocation formulas, and caloriesBurned for exercise
   let carbsGrams = 0;
   let fatGrams = 0;
-  let caloriesBurned = undefined;
   
   if (type === "diet") {
+    const kcalMatch = text.match(/(\d+)\s*(?:大卡|kcal|卡路里|卡)/i);
+    if (kcalMatch) {
+      estimatedValue = parseInt(kcalMatch[1]);
+    } else {
+      estimatedValue = 250; // 預設 250 大卡
+    }
+    
     carbsGrams = Math.round((estimatedValue * 0.5) / 4);
     fatGrams = Math.round((estimatedValue * 0.3) / 9);
     if (proteinGrams > 0) {
@@ -96,7 +92,14 @@ function extractPendingRecordFromText(text: string, titleDefault: string) {
       }
     }
   } else {
-    // For exercise: estimatedValue is minutes. Calculate calories burned if not explicitly in text.
+    // For exercise: estimatedValue is minutes.
+    const minsMatch = text.match(/(\d+)\s*(?:分鐘|分)/);
+    if (minsMatch) {
+      estimatedValue = parseInt(minsMatch[1]);
+    } else {
+      estimatedValue = 30; // 預設 30 分鐘
+    }
+    
     const burnedMatch = text.match(/(\d+)\s*(?:大卡|kcal|卡路里|卡)/i);
     if (burnedMatch) {
       caloriesBurned = parseInt(burnedMatch[1]);
@@ -146,8 +149,9 @@ const COACH_SYSTEM_PROMPT = `你是一位充滿溫度、溫和且高度同理心
    - 【低磨損、微小而持續的習慣建立】：你深信「每天累積 1% 的改變」，避免給予過於龐大或高難度目標。始終提供溫和、易行的微習慣指引，幫助大腦降低阻力，輕鬆邁出下一小步。
    - 【嚴禁提供個人化醫療或治療處方】：你不得為使用者開立個人專屬健康管理或特定臨床控制處方。在你的回答結尾，必須包含以下大眾免責指引聲明：
      「我是您的 PaoPao健康陪跑教練，我可以為您提供大眾健康指引，但不能為您開立專屬醫療診斷與個人化臨床飲食處方。如有特定疾病、特殊控制或治療需求，請務必諮詢執業醫師、實體營養師等專業醫療機構唷。」
-2. 【推廣哈佛餐盤與主動營養科普】：
-   - 當使用者諮詢、上傳、或提及任何與食物、餐食、點心、飲料相關的內容時，你必須主動估算並明確標記其「熱量（卡路里，kcal）」與「蛋白質含量（公克，g）」，並以結構化（例如條列式、小圖示、粗體字）的方式排版呈現，避免過於簡短或敷衍的回答。
+2. 【推廣哈佛餐盤與主動營養/運動能耗科普】：
+   - 當使用者提及食物相關內容時，你必須主動估算並明確標記其「熱量（卡路里，kcal）」與「蛋白質含量（公克，g）」，並以結構化方式呈現。
+   - 當使用者提及運動或身體活動相關內容時，你必須主動估算並明確標記其「運動時間（分鐘）」與「預估熱量消耗（大卡，kcal，可每分鐘消耗約 6.5 大卡做大眾科普粗估）」，並以條列式與粗體字等結構化方式呈現！避免敷衍回答。
    - 引導使用者往「原型食物（蔬菜佔半，穀物與蛋白各 1/4）」前進，幫助建立無摩擦的飲食健康良性連結。
 
 【JSON 輸出規範限制】：
@@ -403,7 +407,9 @@ ${message}`;
 
 嗨！親愛的夥伴，聽你提到進行了【${exerciseKey}】活動，真的要為你熱烈鼓掌！👏 在原子習慣的科學中，「準備並跨出第一步」就是最容易卡關的 80% 阻力，而你已經帥氣通關了！
 
-💡 運動常識科普與代謝率（MET）估算：
+💡 運動常識科普與消耗能耗估算：
+• 預估運動時間：**30** 分鐘
+• 預估消耗熱量：約 **195** kcal （大卡）
 • 該運動活動代謝率（MET）約為：**${item.met}**
 • 習慣科普小筆記：${item.desc}
 
@@ -489,7 +495,9 @@ ${message}`;
 
 嗨！親愛的夥伴，聽你提到進行了身體活動，真的要為你熱烈鼓掌！👏 在原子習慣的科學中，「準備並跨出第一步」就是最容易卡關的 80% 阻力，而你已經帥氣通關了！
 
-💡 運動常識科普與代謝率（MET）估算：
+💡 運動常識科普與消耗能耗估算：
+• 預估運動時間：**30** 分鐘
+• 預估消耗熱量：約 **195** kcal （大卡）
 • 該運動活動代謝率（MET）約為：**4.0**
 • 習慣科普小筆記：適度的身體活動是提升代謝、活化大腦最無痛的方式。不限制時間和強度，只要動起來就是 100 分！
 

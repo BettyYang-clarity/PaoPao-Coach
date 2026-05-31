@@ -716,11 +716,19 @@ export default function WellnessDashboard({
               {/* Inline PaoPao Coach consultation box */}
               <div className="border-t border-brand-border-light/50 pt-3 flex flex-col gap-2">
                 <div className="flex items-center gap-1.5 justify-between">
-                  <span className="text-[10px] font-extrabold text-brand-green flex items-center gap-1">
-                    💬 詢問 PaoPao 飲食與健康疑問
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const query = inlineQuery.trim() || "珍珠奶茶熱量是多少？";
+                      onNavigateToChat?.(query);
+                      setInlineQuery("");
+                    }}
+                    className="text-[10.5px] font-extrabold text-brand-green flex items-center gap-1 hover:text-brand-darkgreen cursor-pointer active:scale-98 transition-all bg-transparent border-none p-0"
+                    title="點擊直接進入 PaoPao 教練進行健康與飲食詢問"
+                  >
+                    💬 詢問 PaoPao 飲食與健康疑問 ➔
+                  </button>
                 </div>
-                
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -890,16 +898,22 @@ export default function WellnessDashboard({
                 </button>
               </form>
 
-
-
               {/* Inline PaoPao Coach consultation box */}
               <div className="border-t border-brand-border-light/50 pt-3 flex flex-col gap-2">
                 <div className="flex items-center gap-1.5 justify-between">
-                  <span className="text-[10px] font-extrabold text-brand-green flex items-center gap-1">
-                    💬 詢問 PaoPao 運動能耗與卡路里計算
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const query = inlineQuery.trim() || "慢跑30分鐘會消耗多少熱量？";
+                      onNavigateToChat?.(query);
+                      setInlineQuery("");
+                    }}
+                    className="text-[10.5px] font-extrabold text-brand-green flex items-center gap-1 hover:text-brand-darkgreen cursor-pointer active:scale-98 transition-all bg-transparent border-none p-0"
+                    title="點擊直接進入 PaoPao 運動能耗與卡路里計算"
+                  >
+                    💬 詢問 PaoPao 運動能耗與卡路里計算 ➔
+                  </button>
                 </div>
-                
                 <div className="flex gap-2">
                   <input
                     type="text"
