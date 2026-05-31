@@ -52,11 +52,12 @@ function extractPendingRecordFromText(text: string, titleDefault: string) {
   
   // 1. Detect if it relates to diet or exercise
   const isDiet = lowerText.includes("大卡") || lowerText.includes("kcal") || lowerText.includes("卡路里") || lowerText.includes("吃") || lowerText.includes("喝") || lowerText.includes("餐") || lowerText.includes("蛋");
-  const isExercise = lowerText.includes("分鐘") || lowerText.includes("met") || lowerText.includes("運動") || lowerText.includes("活動");
+  const isExercise = lowerText.includes("分鐘") || lowerText.includes("met") || lowerText.includes("運動") || lowerText.includes("活動") || lowerText.includes("散步") || lowerText.includes("慢跑") || lowerText.includes("跑步") || lowerText.includes("走路") || lowerText.includes("重訓") || lowerText.includes("健身");
   
   if (!isDiet && !isExercise) return null;
   
-  const type = isDiet ? "diet" : "exercise";
+  // 優先判定 exercise，因為運動句子中經常會提到「大卡」或「卡路里」
+  const type = isExercise ? "exercise" : "diet";
   
   // 2. Extract calories or exercise duration
   let estimatedValue = 0;
@@ -79,9 +80,11 @@ function extractPendingRecordFromText(text: string, titleDefault: string) {
     proteinGrams = Math.round(parseFloat(proteinMatch[1]));
   }
   
-  // 4. Calculate rough carbs and fat based on calorie allocation formulas
+  // 4. Calculate rough carbs and fat based on calorie allocation formulas, and caloriesBurned for exercise
   let carbsGrams = 0;
   let fatGrams = 0;
+  let caloriesBurned = undefined;
+  
   if (type === "diet") {
     carbsGrams = Math.round((estimatedValue * 0.5) / 4);
     fatGrams = Math.round((estimatedValue * 0.3) / 9);
@@ -91,6 +94,14 @@ function extractPendingRecordFromText(text: string, titleDefault: string) {
         carbsGrams = Math.round((remainingKcal * 0.6) / 4);
         fatGrams = Math.round((remainingKcal * 0.4) / 9);
       }
+    }
+  } else {
+    // For exercise: estimatedValue is minutes. Calculate calories burned if not explicitly in text.
+    const burnedMatch = text.match(/(\d+)\s*(?:大卡|kcal|卡路里|卡)/i);
+    if (burnedMatch) {
+      caloriesBurned = parseInt(burnedMatch[1]);
+    } else {
+      caloriesBurned = Math.round(estimatedValue * 6.5);
     }
   }
   
@@ -113,16 +124,17 @@ function extractPendingRecordFromText(text: string, titleDefault: string) {
     title,
     estimatedValue,
     unit: type === "diet" ? "大卡" : "分鐘",
-    proteinGrams: proteinGrams || undefined,
-    carbsGrams: carbsGrams || undefined,
-    fatGrams: fatGrams || undefined,
+    proteinGrams: type === "diet" ? (proteinGrams || undefined) : undefined,
+    carbsGrams: type === "diet" ? (carbsGrams || undefined) : undefined,
+    fatGrams: type === "diet" ? (fatGrams || undefined) : undefined,
+    caloriesBurned,
     pointsEarned: 25,
-    nutritionRough: {
+    nutritionRough: type === "diet" ? {
       carbs: carbsGrams > 0 ? `${carbsGrams}g` : "適量",
       protein: proteinGrams > 0 ? `${proteinGrams}g` : "充足",
       fat: fatGrams > 0 ? `${fatGrams}g` : "充足",
       veg: "適量"
-    }
+    } : undefined
   };
 }
 
@@ -142,16 +154,22 @@ const COACH_SYSTEM_PROMPT = `你是一位充滿溫度、溫和且高度同理心
 - 請一律以 JSON 格式回應！不要包含任何 markdown 語法包裝（如 \`\`\`json）。
 - JSON 必須有 \`reply\` 欄位，放入您要對使用者說的溫馨同理對話。
 - 如果使用者在最新訊息中，有諮詢、手動輸入或提及特定的食物、飲料、餐食或運動，請在 \`pendingRecord\` 欄位中放入對應的結構化分析。若使用者訊息不包含食物、點心或運動（純聊天或無痛諮詢），\`pendingRecord\` 請直接填寫 null 或不回傳。
-- \`pendingRecord\` 結構必須與定義的 schema 一致，包含：
-  - \`type\`: "diet" 或 "exercise"
-  - \`title\`: 食物或運動的標題（例如：香蕉、滷肉飯加蛋）
-  - \`estimatedValue\`: 估計熱量大卡值 (例如 450)
-  - \`unit\`: 單位 ("大卡" 或 "分鐘")
-  - \`proteinGrams\`: 蛋白質克數 (公克，例如 15)
-  - \`carbsGrams\`: 碳水化合物克數 (例如 55)
-  - \`fatGrams\`: 脂肪克數 (例如 18)
+- \`pendingRecord\` 結構必須根據 \`type\` 的不同進行嚴格區分：
+  - 當為飲食（\`type: "diet"\`）時：
+    - \`title\`: 食物名稱（例如：滷肉飯加蛋）
+    - \`estimatedValue\`: 估計熱量大卡值（例如 450）
+    - \`unit\`: "大卡"
+    - \`proteinGrams\`: 蛋白質克數（例如 15）
+    - \`carbsGrams\`: 碳水化合物克數（例如 55）
+    - \`fatGrams\`: 脂肪克數（例如 18）
+    - \`nutritionRough\`: 包含 carbs, protein, fat, veg 四個簡述屬性（例如 "適量"、"偏低" 等）
+  - 當為運動（\`type: "exercise"\`）時：
+    - \`title\`: 運動活動名稱（例如：散步、慢跑）
+    - \`estimatedValue\`: 運動時間分鐘數（例如 30）
+    - \`unit\`: "分鐘"
+    - \`caloriesBurned\`: 消耗卡路里數（例如 200）
+    - 不要填寫 \`proteinGrams\`、\`carbsGrams\`、\`fatGrams\`、\`nutritionRough\`。
   - \`pointsEarned\`: 獲得點數，預設填寫 25
-  - \`nutritionRough\`: 包含 carbs, protein, fat, veg 四個屬性，內容為文字簡述 (例如 "適量"、"偏低" 等)
 `;
 
 // System instruction for Image Analyzer
@@ -253,19 +271,19 @@ ${message}`;
                 reply: { type: Type.STRING },
                 pendingRecord: {
                   type: Type.OBJECT,
-                  required: ["type", "title", "estimatedValue", "unit", "proteinGrams", "carbsGrams", "fatGrams", "pointsEarned", "nutritionRough"],
+                  required: ["type", "title", "estimatedValue", "unit", "pointsEarned"],
                   properties: {
                     type: { type: Type.STRING, enum: ["diet", "exercise"] },
                     title: { type: Type.STRING },
                     estimatedValue: { type: Type.INTEGER },
                     unit: { type: Type.STRING },
+                    caloriesBurned: { type: Type.INTEGER },
                     proteinGrams: { type: Type.INTEGER },
                     carbsGrams: { type: Type.INTEGER },
                     fatGrams: { type: Type.INTEGER },
                     pointsEarned: { type: Type.INTEGER },
                     nutritionRough: {
                       type: Type.OBJECT,
-                      required: ["carbs", "protein", "fat", "veg"],
                       properties: {
                         carbs: { type: Type.STRING },
                         protein: { type: Type.STRING },
@@ -400,16 +418,8 @@ ${message}`;
           title: exerciseKey,
           estimatedValue: 30,
           unit: "分鐘",
-          proteinGrams: 0,
-          carbsGrams: 0,
-          fatGrams: 0,
-          pointsEarned: 25,
-          nutritionRough: {
-            carbs: "無直接攝取",
-            protein: "增肌必備",
-            fat: "消耗效率良好",
-            veg: "多補充電解質"
-          }
+          caloriesBurned: Math.round(30 * 6.5), // 195 kcal
+          pointsEarned: 25
         }
       });
     }
@@ -494,16 +504,8 @@ ${message}`;
           title: extractedTitle,
           estimatedValue: 30,
           unit: "分鐘",
-          proteinGrams: 0,
-          carbsGrams: 0,
-          fatGrams: 0,
-          pointsEarned: 25,
-          nutritionRough: {
-            carbs: "無直接攝取",
-            protein: "增肌必備",
-            fat: "消耗效率良好",
-            veg: "多補充電解質"
-          }
+          caloriesBurned: Math.round(30 * 6.5), // 195 kcal
+          pointsEarned: 25
         }
       });
     }
@@ -590,14 +592,17 @@ export async function handleAnalyzeImage(req: any, res: any) {
             responseMimeType: "application/json",
             responseSchema: {
               type: Type.OBJECT,
-              required: ["type", "estimatedValue", "unit", "nutritionRough", "pointsEarned", "coachFeedback"],
+              required: ["type", "estimatedValue", "unit", "pointsEarned", "coachFeedback"],
               properties: {
                 type: { type: Type.STRING, enum: ["diet", "exercise"] },
                 estimatedValue: { type: Type.INTEGER },
                 unit: { type: Type.STRING },
+                caloriesBurned: { type: Type.INTEGER },
+                proteinGrams: { type: Type.INTEGER },
+                carbsGrams: { type: Type.INTEGER },
+                fatGrams: { type: Type.INTEGER },
                 nutritionRough: {
                   type: Type.OBJECT,
-                  required: ["carbs", "protein", "fat", "veg"],
                   properties: {
                     carbs: { type: Type.STRING },
                     protein: { type: Type.STRING },
@@ -605,7 +610,6 @@ export async function handleAnalyzeImage(req: any, res: any) {
                     veg: { type: Type.STRING }
                   }
                 },
-                proteinGrams: { type: Type.INTEGER },
                 pointsEarned: { type: Type.INTEGER },
                 coachFeedback: { type: Type.STRING }
               }

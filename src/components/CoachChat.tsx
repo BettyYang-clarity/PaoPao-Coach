@@ -47,11 +47,12 @@ function extractNutritionFromText(text: string, titleDefault: string) {
   
   // 1. Detect if it relates to diet or exercise
   const isDiet = lowerText.includes("大卡") || lowerText.includes("kcal") || lowerText.includes("卡路里") || lowerText.includes("吃") || lowerText.includes("喝") || lowerText.includes("餐") || lowerText.includes("蛋");
-  const isExercise = lowerText.includes("分鐘") || lowerText.includes("met") || lowerText.includes("運動") || lowerText.includes("活動");
+  const isExercise = lowerText.includes("分鐘") || lowerText.includes("met") || lowerText.includes("運動") || lowerText.includes("活動") || lowerText.includes("散步") || lowerText.includes("慢跑") || lowerText.includes("跑步") || lowerText.includes("走路") || lowerText.includes("重訓") || lowerText.includes("健身");
   
   if (!isDiet && !isExercise) return null;
   
-  const type = isDiet ? "diet" : "exercise";
+  // 優先判定 exercise，因為運動句子中經常會提到「大卡」或「卡路里」
+  const type = isExercise ? "exercise" : "diet";
   
   // 2. Extract calories or duration
   let estimatedValue = 0;
