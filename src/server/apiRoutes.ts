@@ -38,18 +38,32 @@ function base64ToPart(base64Str: string, mimeType: string) {
   };
 }
 
-// System instruction for general High-EQ Chat
 const COACH_SYSTEM_PROMPT = `你是一位充滿溫度、溫和且高度同理心的 PaoPao健康養成教練（簡稱 PaoPao教練）。你深諳「行為心理學」與「原子習慣」原理，且具備大眾健康飲食及身體活動指引常識。
 
 你的核心角色與規範：
 1. 【健康陪跑與原子習慣角色】：
    - 抱持 100% 溫慢、接納與同理心。無論使用者是否達標、是否吃了低糖低脂或高糖油炸美食，絕對不予以任何指責、罪惡感威脅或審判。誠實記錄是好習慣的起點，要隨喜讚賞他們的誠實。
-   - 【低磨損、微小而持續的習慣建立】：你深信「每天累積 1% 的改變」，避免給予過於龐大或高難度的目標。始終提供溫和、易行的微習慣指引，幫助大腦降低阻力，輕鬆邁出下一小步。
+   - 【低磨損、微小而持續的習慣建立】：你深信「每天累積 1% 的改變」，避免給予過於龐大或高難度目標。始終提供溫和、易行的微習慣指引，幫助大腦降低阻力，輕鬆邁出下一小步。
    - 【嚴禁提供個人化醫療或治療處方】：你不得為使用者開立個人專屬健康管理或特定臨床控制處方。在你的回答結尾，必須包含以下大眾免責指引聲明：
      「我是您的 PaoPao健康陪跑教練，我可以為您提供大眾健康指引，但不能為您開立專屬醫療診斷與個人化臨床飲食處方。如有特定疾病、特殊控制或治療需求，請務必諮詢執業醫師、實體營養師等專業醫療機構唷。」
 2. 【推廣哈佛餐盤與主動營養科普】：
    - 當使用者諮詢、上傳、或提及任何與食物、餐食、點心、飲料相關的內容時，你必須主動估算並明確標記其「熱量（卡路里，kcal）」與「蛋白質含量（公克，g）」，並以結構化（例如條列式、小圖示、粗體字）的方式排版呈現，避免過於簡短或敷衍的回答。
    - 引導使用者往「原型食物（蔬菜佔半，穀物與蛋白各 1/4）」前進，幫助建立無摩擦的飲食健康良性連結。
+
+【JSON 輸出規範限制】：
+- 請一律以 JSON 格式回應！不要包含任何 markdown 語法包裝（如 \`\`\`json）。
+- JSON 必須有 \`reply\` 欄位，放入您要對使用者說的溫馨同理對話。
+- 如果使用者在最新訊息中，有諮詢、手動輸入或提及特定的食物、飲料、餐食或運動，請在 \`pendingRecord\` 欄位中放入對應的結構化分析。若使用者訊息不包含食物、點心或運動（純聊天或無痛諮詢），\`pendingRecord\` 請直接填寫 null 或不回傳。
+- \`pendingRecord\` 結構必須與定義的 schema 一致，包含：
+  - \`type\`: "diet" 或 "exercise"
+  - \`title\`: 食物或運動的標題（例如：香蕉、滷肉飯加蛋）
+  - \`estimatedValue\`: 估計熱量大卡值 (例如 450)
+  - \`unit\`: 單位 ("大卡" 或 "分鐘")
+  - \`proteinGrams\`: 蛋白質克數 (公克，例如 15)
+  - \`carbsGrams\`: 碳水化合物克數 (例如 55)
+  - \`fatGrams\`: 脂肪克數 (例如 18)
+  - \`pointsEarned\`: 獲得點數，預設填寫 25
+  - \`nutritionRough\`: 包含 carbs, protein, fat, veg 四個屬性，內容為文字簡述 (例如 "適量"、"偏低" 等)
 `;
 
 // System instruction for Image Analyzer
@@ -138,29 +152,63 @@ ${history && Array.isArray(history) ? history.map((m: any) => `${m.sender === "b
 ${message}`;
 
         let response;
+        const callParams = (modelName: string) => ({
+          model: modelName,
+          contents: prompt,
+          config: {
+            systemInstruction: COACH_SYSTEM_PROMPT,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              required: ["reply"],
+              properties: {
+                reply: { type: Type.STRING },
+                pendingRecord: {
+                  type: Type.OBJECT,
+                  required: ["type", "title", "estimatedValue", "unit", "proteinGrams", "carbsGrams", "fatGrams", "pointsEarned", "nutritionRough"],
+                  properties: {
+                    type: { type: Type.STRING, enum: ["diet", "exercise"] },
+                    title: { type: Type.STRING },
+                    estimatedValue: { type: Type.INTEGER },
+                    unit: { type: Type.STRING },
+                    proteinGrams: { type: Type.INTEGER },
+                    carbsGrams: { type: Type.INTEGER },
+                    fatGrams: { type: Type.INTEGER },
+                    pointsEarned: { type: Type.INTEGER },
+                    nutritionRough: {
+                      type: Type.OBJECT,
+                      required: ["carbs", "protein", "fat", "veg"],
+                      properties: {
+                        carbs: { type: Type.STRING },
+                        protein: { type: Type.STRING },
+                        fat: { type: Type.STRING },
+                        veg: { type: Type.STRING }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        });
+
         try {
           // 優先嘗試使用 gemini-3.5-flash
-          response = await ai.models.generateContent({
-            model: "gemini-3.5-flash",
-            contents: prompt,
-            config: {
-              systemInstruction: COACH_SYSTEM_PROMPT
-            }
-          });
+          response = await ai.models.generateContent(callParams("gemini-3.5-flash"));
         } catch (modelError: any) {
           console.warn("⚠️ gemini-3.5-flash failed, trying gemini-2.5-flash fallback:", modelError);
           // 次要嘗試使用 gemini-2.5-flash
-          response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: prompt,
-            config: {
-              systemInstruction: COACH_SYSTEM_PROMPT
-            }
-          });
+          response = await ai.models.generateContent(callParams("gemini-2.5-flash"));
         }
 
         if (response && response.text) {
-          return res.json({ reply: response.text });
+          try {
+            const result = JSON.parse(response.text.trim() || "{}");
+            return res.json(result);
+          } catch (jsonErr) {
+            console.warn("⚠️ Failed to parse JSON from AI coach chat response:", jsonErr);
+            return res.json({ reply: response.text });
+          }
         }
       } catch (realAiError: any) {
         console.error("⚠️ Real Gemini API Call failed:", realAiError);
@@ -191,7 +239,23 @@ ${message}`;
 💡 依照世界權威【哈佛健康餐盤】指引，我們可以將每餐分配分為三個重要區塊：蔬菜佔一半（多樣化），優質全穀物（如十穀、糙米）佔 1/4，健康蛋白質（如豆製品、魚、蛋與瘦肉）佔 1/4。這是不需要特定處方，每個人都能輕鬆愛護自己的極佳基準！
 
 🎯 【目標提醒】：${goalStr}。
-☘️ 【微習慣建議】：今天晚餐的第一口，請試著先從「一口蛋白質」或「一口蔬菜」開始吃起，以此取代精緻澱粉的先發吸收，幫助身體無壓力感受平穩活力！`
+☘️ 【微習慣建議】：今天晚餐的第一口，請試著先從「一口蛋白質」或「一口蔬菜」開始吃起，以此取代精緻澱粉的先發吸收，幫助身體無壓力感受平穩活力！`,
+        pendingRecord: {
+          type: "diet",
+          title: foodKey,
+          estimatedValue: item.kcal,
+          unit: "大卡",
+          proteinGrams: parseInt(item.protein) || 0,
+          carbsGrams: parseInt(item.carbs) || 0,
+          fatGrams: parseInt(item.fat) || 0,
+          pointsEarned: 25,
+          nutritionRough: {
+            carbs: item.carbs || "適量",
+            protein: item.protein || "稍微偏低",
+            fat: item.fat || "充足",
+            veg: "較少"
+          }
+        }
       });
     }
 
@@ -213,7 +277,23 @@ ${message}`;
 你可以如何無痛放大這個好習慣：
 ☘️ 【微習慣建議】：在剛運動完的這 30 分鐘，請順手給自己盛上一杯 300ml 的微溫水，一口口慢吞吞地喝完它。這是最棒、最簡單、也最不需要意志力就能幫助肌肉修補和加速乳酸代謝的習慣連結。
 
-今天真的做得太棒了，持續累積你的微小改變吧！`
+今天真的做得太棒了，持續累積你的微小改變吧！`,
+        pendingRecord: {
+          type: "exercise",
+          title: exerciseKey,
+          estimatedValue: 30,
+          unit: "分鐘",
+          proteinGrams: 0,
+          carbsGrams: 0,
+          fatGrams: 0,
+          pointsEarned: 25,
+          nutritionRough: {
+            carbs: "無直接攝取",
+            protein: "增肌必備",
+            fat: "消耗效率良好",
+            veg: "多補充電解質"
+          }
+        }
       });
     }
 

@@ -87,7 +87,24 @@ export default function CoachChat({
     setIsSending(true);
 
     try {
-      await onSendMessage(textToSubmit);
+      const apiResult: any = await onSendMessage(textToSubmit);
+      if (apiResult && apiResult.pendingRecord) {
+        const pending = apiResult.pendingRecord;
+        setPendingAnalysis({
+          type: pending.type || "diet",
+          title: pending.title || textToSubmit,
+          estimatedValue: pending.estimatedValue || 0,
+          proteinGrams: pending.proteinGrams || 0,
+          carbsGrams: pending.carbsGrams || 0,
+          fatGrams: pending.fatGrams || 0,
+          unit: pending.unit || "大卡",
+          base64: "", // No image base64 for text-based input
+          pointsEarned: pending.pointsEarned || 25,
+          coachSuggestion: apiResult.reply || pending.coachSuggestion || "",
+          nutritionRough: pending.nutritionRough
+        });
+        setShowSaveModal(false);
+      }
     } catch (err: any) {
       console.error(err);
       setUploadError("教練稍微收訊不好，請再傳一次唷！");
@@ -168,7 +185,7 @@ export default function CoachChat({
         onAddCustomMessages(userMsg, analysisMsg);
       }
 
-      const pending = apiResult.pendingRecord || {};
+      const pending = apiResult.pendingRecord || apiResult || {};
       setPendingAnalysis({
         type: pending.type || "diet",
         title: pending.title || "未知食物",
@@ -178,8 +195,8 @@ export default function CoachChat({
         fatGrams: pending.fatGrams || 0,
         unit: pending.unit || "大卡",
         base64,
-        pointsEarned: pending.pointsEarned || 20,
-        coachSuggestion: apiResult.coachSuggestion || "",
+        pointsEarned: pending.pointsEarned || 25,
+        coachSuggestion: apiResult.coachSuggestion || apiResult.coachFeedback || "",
         nutritionRough: pending.nutritionRough
       });
       setShowSaveModal(false);

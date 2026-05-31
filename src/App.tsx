@@ -433,6 +433,8 @@ export default function App() {
         messages: [...prev.messages, coachMsg]
       }));
 
+      return data;
+
     } catch (e: any) {
       console.error(e);
       // Fallback message with debug details
