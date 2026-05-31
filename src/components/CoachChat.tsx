@@ -25,6 +25,7 @@ interface PendingAnalysis {
     fat?: string;
     veg?: string;
   };
+  caloriesBurned?: number; // Optional calories burned for exercise type
 }
 
 interface CoachChatProps {
@@ -73,9 +74,11 @@ function extractNutritionFromText(text: string, titleDefault: string) {
     proteinGrams = Math.round(parseFloat(proteinMatch[1]));
   }
   
-  // 4. Rough calculation for carbs and fat
+  // 4. Rough calculation for carbs and fat, and caloriesBurned for exercise
   let carbsGrams = 0;
   let fatGrams = 0;
+  let caloriesBurned = undefined;
+  
   if (type === "diet") {
     carbsGrams = Math.round((estimatedValue * 0.5) / 4);
     fatGrams = Math.round((estimatedValue * 0.3) / 9);
@@ -85,6 +88,14 @@ function extractNutritionFromText(text: string, titleDefault: string) {
         carbsGrams = Math.round((remainingKcal * 0.6) / 4);
         fatGrams = Math.round((remainingKcal * 0.4) / 9);
       }
+    }
+  } else {
+    // For exercise: estimatedValue is minutes. Calculate calories burned if not explicitly in text.
+    const burnedMatch = text.match(/(\d+)\s*(?:大卡|kcal|卡路里|卡)/i);
+    if (burnedMatch) {
+      caloriesBurned = parseInt(burnedMatch[1]);
+    } else {
+      caloriesBurned = Math.round(estimatedValue * 6.5);
     }
   }
   
@@ -105,16 +116,17 @@ function extractNutritionFromText(text: string, titleDefault: string) {
     title,
     estimatedValue,
     unit: type === "diet" ? "大卡" : "分鐘",
-    proteinGrams,
-    carbsGrams,
-    fatGrams,
+    proteinGrams: type === "diet" ? proteinGrams : 0,
+    carbsGrams: type === "diet" ? carbsGrams : 0,
+    fatGrams: type === "diet" ? fatGrams : 0,
+    caloriesBurned,
     pointsEarned: 25,
-    nutritionRough: {
+    nutritionRough: type === "diet" ? {
       carbs: carbsGrams > 0 ? `${carbsGrams}g` : "適量",
       protein: proteinGrams > 0 ? `${proteinGrams}g` : "充足",
       fat: fatGrams > 0 ? `${fatGrams}g` : "充足",
       veg: "適量"
-    }
+    } : undefined
   };
 }
 
@@ -182,11 +194,12 @@ export default function CoachChat({
             proteinGrams: pending.proteinGrams || 0,
             carbsGrams: pending.carbsGrams || 0,
             fatGrams: pending.fatGrams || 0,
-            unit: pending.unit || "大卡",
+            unit: pending.unit || (pending.type === "exercise" ? "分鐘" : "大卡"),
             base64: "", // No image base64 for text-based input
             pointsEarned: pending.pointsEarned || 25,
             coachSuggestion: apiResult.reply || pending.coachSuggestion || "",
-            nutritionRough: pending.nutritionRough
+            nutritionRough: pending.nutritionRough,
+            caloriesBurned: pending.caloriesBurned || (pending.type === "exercise" ? Math.round((pending.estimatedValue || 0) * 6.5) : undefined)
           });
           setShowSaveModal(false);
         }
@@ -279,11 +292,12 @@ export default function CoachChat({
         proteinGrams: pending.proteinGrams || 0,
         carbsGrams: pending.carbsGrams || 0,
         fatGrams: pending.fatGrams || 0,
-        unit: pending.unit || "大卡",
+        unit: pending.unit || (pending.type === "exercise" ? "分鐘" : "大卡"),
         base64,
         pointsEarned: pending.pointsEarned || 25,
         coachSuggestion: apiResult.coachSuggestion || apiResult.coachFeedback || "",
-        nutritionRough: pending.nutritionRough
+        nutritionRough: pending.nutritionRough,
+        caloriesBurned: pending.caloriesBurned || (pending.type === "exercise" ? Math.round((pending.estimatedValue || 0) * 6.5) : undefined)
       });
       setShowSaveModal(false);
 
@@ -325,7 +339,8 @@ export default function CoachChat({
   const handleSaveRecord = () => {
     if (!pendingAnalysis) return;
     const isPrefixed = /^[🍱🏃‍♀️💎🍀]/.test(pendingAnalysis.title);
-    const displayTitle = isPrefixed ? pendingAnalysis.title : `🍱 ${pendingAnalysis.title}`;
+    const prefix = pendingAnalysis.type === "exercise" ? "🏃‍♀️" : "🍱";
+    const displayTitle = isPrefixed ? pendingAnalysis.title : `${prefix} ${pendingAnalysis.title}`;
 
     onImageAnalysisResult({
       id: `r-ai-${Date.now()}`,
@@ -336,18 +351,28 @@ export default function CoachChat({
       estimatedValue: pendingAnalysis.estimatedValue,
       unit: pendingAnalysis.unit,
       proteinGrams: pendingAnalysis.type === "diet" ? pendingAnalysis.proteinGrams : undefined,
+      caloriesBurned: pendingAnalysis.type === "exercise" ? pendingAnalysis.caloriesBurned : undefined,
       pointsEarned: pendingAnalysis.pointsEarned,
       coachFeedback: pendingAnalysis.coachSuggestion || "",
-      nutritionRough: pendingAnalysis.nutritionRough
+      nutritionRough: pendingAnalysis.type === "diet" ? pendingAnalysis.nutritionRough : undefined
     });
 
-    const parts = [
-      `✅ 已儲存「${displayTitle}」`,
-      `熱量 ${pendingAnalysis.estimatedValue} 大卡`,
-      `蛋白質 ${pendingAnalysis.proteinGrams}g`,
-      `碳水 ${pendingAnalysis.carbsGrams}g`,
-      `脂肪 ${pendingAnalysis.fatGrams}g`
-    ];
+    let parts: string[] = [];
+    if (pendingAnalysis.type === "exercise") {
+      parts = [
+        `✅ 已儲存「${displayTitle}」`,
+        `時間 ${pendingAnalysis.estimatedValue} 分鐘`,
+        `消耗熱量 ${pendingAnalysis.caloriesBurned || 0} 大卡`
+      ];
+    } else {
+      parts = [
+        `✅ 已儲存「${displayTitle}」`,
+        `熱量 ${pendingAnalysis.estimatedValue} 大卡`,
+        `蛋白質 ${pendingAnalysis.proteinGrams}g`,
+        `碳水 ${pendingAnalysis.carbsGrams}g`,
+        `脂肪 ${pendingAnalysis.fatGrams}g`
+      ];
+    }
     const savedMsg: ChatMessage = {
       id: `m-bot-saved-${Date.now()}`,
       sender: "bot",
@@ -472,7 +497,11 @@ export default function CoachChat({
           <div className="p-3 bg-emerald-50 border border-brand-green/20 rounded-2xl flex items-center justify-between gap-3 animate-fade-in mb-1">
             <div className="flex items-center gap-2 text-emerald-800 text-[10px] font-bold font-sans">
               <span>☘️</span>
-              <span>已估算完成！是否將「{pendingAnalysis.title}」({pendingAnalysis.estimatedValue} kcal) 儲存至今日足跡？</span>
+              <span>
+                已估算完成！是否將「{pendingAnalysis.title}」
+                ({pendingAnalysis.type === "exercise" ? `${pendingAnalysis.estimatedValue} 分鐘` : `${pendingAnalysis.estimatedValue} kcal`}) 
+                儲存至今日足跡？
+              </span>
             </div>
             <button
               onClick={() => setShowSaveModal(true)}
@@ -523,9 +552,11 @@ export default function CoachChat({
           </div>
 
           <div className="px-3.5 py-2.5 flex flex-col gap-2.5 overflow-y-auto flex-1 min-h-0 text-left">
-            {/* Food name */}
+            {/* Food or Exercise name */}
             <div className="flex flex-col gap-1">
-              <label className="text-[10px] text-slate-500 font-semibold">食物名稱</label>
+              <label className="text-[10px] text-slate-500 font-semibold">
+                {pendingAnalysis.type === "exercise" ? "運動名稱" : "食物名稱"}
+              </label>
               <input
                 type="text"
                 className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 text-xs font-sans outline-none focus:ring-1 focus:ring-emerald-300"
@@ -534,67 +565,101 @@ export default function CoachChat({
               />
             </div>
 
-            {/* Macro nutrients - 2x2 grid */}
-            <div className="grid grid-cols-2 gap-2">
-              {/* Calories - full width highlight */}
-              <div className="col-span-2 flex items-center justify-between bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
-                <span className="text-[10px] text-emerald-700 font-bold">🔥 熱量</span>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    className="w-16 text-right px-1.5 py-0.5 bg-white border border-emerald-200 rounded-md text-emerald-800 text-xs font-bold font-sans outline-none focus:ring-1 focus:ring-emerald-400"
-                    value={pendingAnalysis.estimatedValue}
-                    onChange={(e) => setPendingAnalysis({ ...pendingAnalysis, estimatedValue: Number(e.target.value) })}
-                  />
-                  <span className="text-[10px] text-emerald-600 font-medium">大卡</span>
+            {/* Metrics */}
+            {pendingAnalysis.type === "exercise" ? (
+              /* Exercise Layout: 2 items side-by-side */
+              <div className="grid grid-cols-2 gap-2">
+                {/* Duration */}
+                <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 rounded-xl px-2.5 py-2">
+                  <span className="text-[10px] text-emerald-700 font-bold">⏱️ 時間</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      className="w-12 text-right px-1 py-0.5 bg-white border border-emerald-200 rounded-md text-emerald-800 text-xs font-bold font-sans outline-none focus:ring-1 focus:ring-emerald-400"
+                      value={pendingAnalysis.estimatedValue}
+                      onChange={(e) => setPendingAnalysis({ ...pendingAnalysis, estimatedValue: Number(e.target.value) })}
+                    />
+                    <span className="text-[10px] text-emerald-600 font-medium">分鐘</span>
+                  </div>
                 </div>
-              </div>
 
-              {/* Protein */}
-              <div className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-xl px-2.5 py-2">
-                <span className="text-[10px] text-blue-700 font-semibold">💪 蛋白質</span>
-                <div className="flex items-center gap-1">
-                  <input
-                    type="number"
-                    className="w-12 text-right px-1 py-0.5 bg-white border border-blue-200 rounded-md text-blue-800 text-xs font-bold font-sans outline-none focus:ring-1 focus:ring-blue-300"
-                    value={pendingAnalysis.proteinGrams}
-                    onChange={(e) => setPendingAnalysis({ ...pendingAnalysis, proteinGrams: Number(e.target.value) })}
-                  />
-                  <span className="text-[10px] text-blue-500">g</span>
+                {/* Calories Burned */}
+                <div className="flex items-center justify-between bg-orange-50 border border-orange-100 rounded-xl px-2.5 py-2">
+                  <span className="text-[10px] text-orange-700 font-bold">🔥 消耗</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      className="w-12 text-right px-1 py-0.5 bg-white border border-orange-200 rounded-md text-orange-800 text-xs font-bold font-sans outline-none focus:ring-1 focus:ring-orange-300"
+                      value={pendingAnalysis.caloriesBurned || 0}
+                      onChange={(e) => setPendingAnalysis({ ...pendingAnalysis, caloriesBurned: Number(e.target.value) })}
+                    />
+                    <span className="text-[10px] text-rose-500">大卡</span>
+                  </div>
                 </div>
               </div>
+            ) : (
+              /* Diet Layout (original 2x2 grid) */
+              <div className="grid grid-cols-2 gap-2">
+                {/* Calories - full width highlight */}
+                <div className="col-span-2 flex items-center justify-between bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
+                  <span className="text-[10px] text-emerald-700 font-bold">🔥 熱量</span>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      className="w-16 text-right px-1.5 py-0.5 bg-white border border-emerald-200 rounded-md text-emerald-800 text-xs font-bold font-sans outline-none focus:ring-1 focus:ring-emerald-400"
+                      value={pendingAnalysis.estimatedValue}
+                      onChange={(e) => setPendingAnalysis({ ...pendingAnalysis, estimatedValue: Number(e.target.value) })}
+                    />
+                    <span className="text-[10px] text-emerald-600 font-medium">大卡</span>
+                  </div>
+                </div>
 
-              {/* Carbs */}
-              <div className="flex items-center justify-between bg-amber-50 border border-amber-100 rounded-xl px-2.5 py-2">
-                <span className="text-[10px] text-amber-700 font-semibold">🌾 碳水</span>
-                <div className="flex items-center gap-1">
-                  <input
-                    type="number"
-                    className="w-12 text-right px-1 py-0.5 bg-white border border-amber-200 rounded-md text-amber-800 text-xs font-bold font-sans outline-none focus:ring-1 focus:ring-amber-300"
-                    value={pendingAnalysis.carbsGrams}
-                    onChange={(e) => setPendingAnalysis({ ...pendingAnalysis, carbsGrams: Number(e.target.value) })}
-                  />
-                  <span className="text-[10px] text-amber-500">g</span>
+                {/* Protein */}
+                <div className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-xl px-2.5 py-2">
+                  <span className="text-[10px] text-blue-700 font-semibold">💪 蛋白質</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      className="w-12 text-right px-1 py-0.5 bg-white border border-blue-200 rounded-md text-blue-800 text-xs font-bold font-sans outline-none focus:ring-1 focus:ring-blue-300"
+                      value={pendingAnalysis.proteinGrams}
+                      onChange={(e) => setPendingAnalysis({ ...pendingAnalysis, proteinGrams: Number(e.target.value) })}
+                    />
+                    <span className="text-[10px] text-blue-500">g</span>
+                  </div>
                 </div>
-              </div>
 
-              {/* Fat */}
-              <div className="col-span-2 flex items-center justify-between bg-rose-50 border border-rose-100 rounded-xl px-2.5 py-2">
-                <span className="text-[10px] text-rose-700 font-semibold">🫙 脂肪</span>
-                <div className="flex items-center gap-1">
-                  <input
-                    type="number"
-                    className="w-12 text-right px-1 py-0.5 bg-white border border-rose-200 rounded-md text-rose-800 text-xs font-bold font-sans outline-none focus:ring-1 focus:ring-rose-300"
-                    value={pendingAnalysis.fatGrams}
-                    onChange={(e) => setPendingAnalysis({ ...pendingAnalysis, fatGrams: Number(e.target.value) })}
-                  />
-                  <span className="text-[10px] text-rose-500">g</span>
+                {/* Carbs */}
+                <div className="flex items-center justify-between bg-amber-50 border border-amber-100 rounded-xl px-2.5 py-2">
+                  <span className="text-[10px] text-amber-700 font-semibold">🌾 碳水</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      className="w-12 text-right px-1 py-0.5 bg-white border border-amber-200 rounded-md text-amber-800 text-xs font-bold font-sans outline-none focus:ring-1 focus:ring-amber-300"
+                      value={pendingAnalysis.carbsGrams}
+                      onChange={(e) => setPendingAnalysis({ ...pendingAnalysis, carbsGrams: Number(e.target.value) })}
+                    />
+                    <span className="text-[10px] text-amber-500">g</span>
+                  </div>
+                </div>
+
+                {/* Fat */}
+                <div className="col-span-2 flex items-center justify-between bg-rose-50 border border-rose-100 rounded-xl px-2.5 py-2">
+                  <span className="text-[10px] text-rose-700 font-semibold">🫙 脂肪</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      className="w-12 text-right px-1 py-0.5 bg-white border border-rose-200 rounded-md text-rose-800 text-xs font-bold font-sans outline-none focus:ring-1 focus:ring-rose-300"
+                      value={pendingAnalysis.fatGrams}
+                      onChange={(e) => setPendingAnalysis({ ...pendingAnalysis, fatGrams: Number(e.target.value) })}
+                    />
+                    <span className="text-[10px] text-rose-500">g</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Nutrition quality tags */}
-            {pendingAnalysis.nutritionRough && (
+            {pendingAnalysis.type === "diet" && pendingAnalysis.nutritionRough && (
               <div className="flex flex-wrap gap-1">
                 {Object.entries(pendingAnalysis.nutritionRough).map(([key, val]) => {
                   const labels: Record<string, string> = { carbs: "碳水", protein: "蛋白質", fat: "油脂", veg: "蔬菜" };
