@@ -211,9 +211,12 @@ export default function CoachChat({
       processImageFile(autoFile);
       onAutoConsumed?.();
     } else if (autoQuery) {
-      // Inject the query as a user message and fire send through full pipeline
-      submitTextMessage(autoQuery).catch(console.error);
-      onAutoConsumed?.();
+      // 確保 Modal 開啟與狀態穩定後，稍作延遲再發送，避開 React 批次更新的競態條件
+      const timer = setTimeout(() => {
+        submitTextMessage(autoQuery).catch(console.error);
+        onAutoConsumed?.();
+      }, 100);
+      return () => clearTimeout(timer);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoFile, autoQuery]);
