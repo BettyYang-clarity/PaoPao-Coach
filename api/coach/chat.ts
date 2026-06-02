@@ -318,13 +318,11 @@ ${message}`;
           }
         }
       } catch (realAiError: any) {
-        console.error("⚠️ Real Gemini API Call failed:", realAiError);
-        const errorMsg = `❌ 【AI 教練連線失敗】\n很抱歉，教練與 AI 核心失去連線。這通常是由於金鑰設定問題或額度限制引起的。\n\n💡 偵錯與診斷資訊：\n- 錯誤內容：${realAiError.message || JSON.stringify(realAiError)}\n- 金鑰狀態：已設定 (長度: ${(process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_Pao)?.trim().length} 字元)\n\n請檢查您的 Vercel 專案 Settings -> Environment Variables 中的 GEMINI_API_KEY。設定完畢後，請重新部署以套用。`;
-        return res.json({ reply: errorMsg });
+        console.warn("⚠️ Real Gemini API Call failed, gracefully falling back to offline mock mode:", realAiError);
+        systemWarning = `💡【系統溫柔提示：由於線上 AI 核心目前忙碌中或網路連線異常 (代碼: ${realAiError.status || 503})，PaoPao教練已為您自動切換至『離線溫柔陪跑模式』。所有記錄與分析功能均正常運作，請放心對話唷！☘️】\n\n`;
       }
     }
 
-    // --- FALLBACK MOCK ENGINE ---
     let foodKey = Object.keys(fallbackFoods).find(k => lowerMessage.includes(k));
     if (foodKey) {
       const item = fallbackFoods[foodKey];

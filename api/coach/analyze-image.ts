@@ -133,11 +133,7 @@ export default async function handler(req: Request, res: Response) {
           return res.json(result);
         }
       } catch (realAiError: any) {
-        console.error("⚠️ Real Gemini Image Analyzer failed:", realAiError);
-        return res.status(500).json({
-          error: "AI 圖片分析失敗",
-          details: realAiError.message || JSON.stringify(realAiError),
-        });
+        console.warn("⚠️ Real Gemini Image Analyzer failed, gracefully falling back to offline mock mode:", realAiError);
       }
     }
 

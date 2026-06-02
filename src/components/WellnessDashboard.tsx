@@ -27,6 +27,7 @@ import {
   X,
   FileText,
   TrendingUp,
+  TrendingDown,
   Award,
   ChevronDown,
   ChevronUp,
@@ -279,9 +280,89 @@ export default function WellnessDashboard({
         timestamp: new Date(r.timestamp).getTime()
       }));
     }
-    
     return [];
   };
+
+  // Mifflin-St Jeor Formula calculation
+  const getBmrAndTdee = (
+    weight = 65,
+    height = 170,
+    age = 28,
+    gender = "不公開",
+    activity = "lightly_active"
+  ) => {
+    let s = -78; // average offset
+    if (gender === "男生") {
+      s = 5;
+    } else if (gender === "女生") {
+      s = -161;
+    }
+
+    const bmr = 10 * weight + 6.25 * height - 5 * age + s;
+
+    let palMultiplier = 1.375;
+    if (activity === "sedentary") palMultiplier = 1.2;
+    else if (activity === "lightly_active") palMultiplier = 1.375;
+    else if (activity === "moderately_active") palMultiplier = 1.55;
+    else if (activity === "very_active") palMultiplier = 1.725;
+
+    const tdee = Math.round(bmr * palMultiplier);
+
+    return {
+      bmr: Math.round(bmr),
+      tdee: tdee > 1000 ? tdee : 1600,
+    };
+  };
+
+  const dashboardCalc = getBmrAndTdee(
+    profile.weight || 65,
+    profile.height || 170,
+    profile.age || 28,
+    profile.gender || "不公開",
+    profile.activityLevel || "lightly_active"
+  );
+
+  const getWeeklyDeficitDays = () => {
+    const deficitDaysList = [];
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    
+    for (let i = 0; i < 7; i++) {
+      const targetDate = new Date(Date.now() - i * oneDayMs);
+      const dateStr = targetDate.toDateString();
+      
+      let dayKcal = 0;
+      let dayBurned = 0;
+      let hasRecordOnDay = false;
+      
+      records.forEach((r) => {
+        const rDate = new Date(r.timestamp);
+        if (rDate.toDateString() === dateStr) {
+          hasRecordOnDay = true;
+          if (r.type === "diet") {
+            dayKcal += r.estimatedValue || 0;
+          }
+          if (r.type === "exercise") {
+            if (r.caloriesBurned) {
+              dayBurned += r.caloriesBurned;
+            } else if (r.estimatedValue) {
+              dayBurned += Math.round(r.estimatedValue * 6.5);
+            }
+          }
+        }
+      });
+      
+      // Deficit = TDEE + ExerciseBurned - DietIntake
+      const dayDeficit = (dashboardCalc.tdee + dayBurned) - dayKcal;
+      
+      if (hasRecordOnDay && dayDeficit > 0) {
+        deficitDaysList.push(dateStr);
+      }
+    }
+    
+    return deficitDaysList.length;
+  };
+  
+  const weeklyDeficitDays = getWeeklyDeficitDays();
 
   // Aggregated calculations for TODAY
   const getTodayStats = () => {
@@ -307,6 +388,8 @@ export default function WellnessDashboard({
           exercise += r.estimatedValue || 0;
           if (r.caloriesBurned) {
             burnedKcal += r.caloriesBurned;
+          } else if (r.estimatedValue) {
+            burnedKcal += Math.round(r.estimatedValue * 6.5);
           }
         }
         if (r.type === "sleep") sleep += r.estimatedValue || 0;
@@ -317,6 +400,19 @@ export default function WellnessDashboard({
   };
 
   const todayStats = getTodayStats();
+  const todayDeficit = (dashboardCalc.tdee + todayStats.burnedKcal) - todayStats.kcal;
+
+  const getLatestWeight = () => {
+    const weightRecords = records.filter((r) => r.type === "weight");
+    if (weightRecords.length > 0) {
+      const sorted = [...weightRecords].sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      return sorted[0].estimatedValue || profile.weight || 65;
+    }
+    return profile.weight || 65;
+  };
+  const latestWeight = getLatestWeight();
 
   // Handle standard logs onSubmit
   const handleLogSubmit = async (e: React.FormEvent) => {
@@ -573,6 +669,11 @@ export default function WellnessDashboard({
                   style={{ width: `${Math.min(100, (todayStats.exercise / (profile.dailyExerciseTarget || 30)) * 100)}%` }}
                 />
               </div>
+              <div className="mt-1.5 text-[9px] font-bold text-[#059669] flex items-center gap-0.5">
+                <span>🔥 今日消耗：</span>
+                <span className="font-mono text-[10px]">{todayStats.burnedKcal}</span>
+                <span>kcal</span>
+              </div>
             </div>
           </button>
 
@@ -607,22 +708,26 @@ export default function WellnessDashboard({
           {/* Health Footprint Card (6th Grid Item) */}
           <button
             type="button"
-            onClick={() => setShowHistoryModal(true)}
+            onClick={() => {
+              setHistoryTab('trends');
+              setShowHistoryModal(true);
+            }}
             className="p-3.5 border rounded-2xl flex flex-col justify-between text-left transition-all relative cursor-pointer active:scale-[0.98] bg-white border-brand-border hover:bg-brand-cream/30 hover:border-brand-green/30 shadow-4xs group"
           >
             <div className="flex items-center justify-between w-full">
-              <span className="text-[10px] font-sans font-bold text-brand-muted">📜 健康足跡</span>
-              <Calendar size={12} className="text-brand-ash group-hover:text-brand-green transition-colors" />
+              <span className="text-[10px] font-sans font-bold text-brand-muted">🔥 今日能量赤字</span>
+              <Flame size={12} className="text-brand-ash group-hover:text-[#059669] transition-colors" />
             </div>
             <div className="mt-2.5">
               <div className="flex items-baseline gap-0.5 line-clamp-1">
-                <span className="text-sm font-mono font-bold text-brand-text">{records.length}</span>
-                <span className="text-[9px] text-[#80796B]"> 筆累積習慣</span>
+                <span className={`text-sm font-mono font-bold ${todayDeficit > 0 ? 'text-[#059669]' : 'text-brand-text'}`}>
+                  {todayDeficit}
+                </span>
+                <span className="text-[9px] text-[#80796B]"> kcal</span>
               </div>
-              <div className="w-full bg-brand-cream h-1 rounded-full overflow-hidden mt-2 border border-brand-border-light/45">
-                <div
-                  className="bg-brand-green h-full rounded-full transition-all duration-300 w-full"
-                />
+              <div className="text-[9px] text-brand-muted mt-2 font-medium flex items-center gap-1">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse"></span>
+                <span>本週自律：{weeklyDeficitDays} 天赤字</span>
               </div>
             </div>
           </button>
@@ -1962,6 +2067,114 @@ export default function WellnessDashboard({
               {historyTab === 'trends' && (
                 <div className="flex flex-col gap-3">
                   
+                  {/* 今日自律能量赤字與減重曲線預報 */}
+                  {(() => {
+                    const activeDeficit = todayDeficit > 0 ? todayDeficit : 500;
+                    const deltaW1 = (activeDeficit * 7) / 7700;
+                    const deltaW4 = (activeDeficit * 28) / 7700;
+                    const deltaW12 = (activeDeficit * 84) / 7700;
+
+                    return (
+                      <div className="border border-brand-border rounded-2xl p-4 bg-white shadow-4xs flex flex-col gap-3.5">
+                        <div className="flex items-center gap-2 border-b border-brand-border-light pb-2">
+                          <div className="p-1.5 bg-[#FAF9F6] border border-[#E5E2D9] rounded-lg">
+                            <TrendingDown size={14} className="text-[#059669]" />
+                          </div>
+                          <div>
+                            <span className="text-[11px] font-extrabold text-brand-text block">🎯 自律減重軌跡與曲線預報</span>
+                            <span className="text-[8.5px] text-brand-muted block mt-0.5">基於 7700 kcal = 1kg 脂肪物理常數精準模擬</span>
+                          </div>
+                        </div>
+
+                        {/* Today's Energy Balance Grid */}
+                        <div className="grid grid-cols-4 gap-2 text-center bg-brand-cream/60 p-2.5 rounded-xl border border-brand-border-light/60">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[8.5px] font-bold text-brand-muted flex items-center justify-center gap-0.5">🔥 TDEE</span>
+                            <span className="text-xs font-mono font-bold text-brand-text">
+                              {dashboardCalc.tdee}{" "}
+                              <span className="text-[7.5px] font-sans font-normal text-brand-muted">kcal</span>
+                            </span>
+                          </div>
+                          <div className="flex flex-col gap-0.5 border-l border-brand-sand/30">
+                            <span className="text-[8.5px] font-bold text-[#059669] flex items-center justify-center gap-0.5">🏃 運動消耗</span>
+                            <span className="text-xs font-mono font-bold text-[#059669]">
+                              +{todayStats.burnedKcal}{" "}
+                              <span className="text-[7.5px] font-sans font-normal text-brand-muted">kcal</span>
+                            </span>
+                          </div>
+                          <div className="flex flex-col gap-0.5 border-l border-brand-sand/30">
+                            <span className="text-[8.5px] font-bold text-[#B91C1C] flex items-center justify-center gap-0.5">🥗 飲食攝取</span>
+                            <span className="text-xs font-mono font-bold text-[#B91C1C]">
+                              -{todayStats.kcal}{" "}
+                              <span className="text-[7.5px] font-sans font-normal text-brand-muted">kcal</span>
+                            </span>
+                          </div>
+                          <div className="flex flex-col gap-0.5 border-l border-brand-sand/30">
+                            <span className="text-[8.5px] font-bold text-brand-text flex items-center justify-center gap-0.5">💡 淨赤字</span>
+                            <span
+                              className={`text-xs font-mono font-bold ${
+                                todayDeficit > 0 ? "text-[#059669]" : "text-brand-muted"
+                              }`}
+                            >
+                              {todayDeficit > 0 ? `+${todayDeficit}` : todayDeficit}{" "}
+                              <span className="text-[7.5px] font-sans font-normal text-brand-muted">kcal</span>
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Forecast Weight Trajectory Grid */}
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="bg-white border border-brand-border/60 rounded-xl p-2 flex flex-col gap-1 text-center shadow-5xs hover:border-[#10B981]/30 transition-all">
+                            <span className="text-[8px] font-extrabold text-brand-muted">📆 1 週後自律</span>
+                            <span className="text-[9px] font-bold text-[#059669] font-mono">-{deltaW1.toFixed(2)} kg</span>
+                            <span className="text-[10px] font-mono font-bold text-brand-text">
+                              {(latestWeight - deltaW1).toFixed(2)} kg
+                            </span>
+                          </div>
+                          <div className="bg-white border border-brand-border/60 rounded-xl p-2 flex flex-col gap-1 text-center shadow-5xs hover:border-[#10B981]/30 transition-all">
+                            <span className="text-[8px] font-extrabold text-brand-muted">📆 4 週後自律</span>
+                            <span className="text-[9px] font-bold text-[#059669] font-mono">-{deltaW4.toFixed(2)} kg</span>
+                            <span className="text-[10px] font-mono font-bold text-brand-text">
+                              {(latestWeight - deltaW4).toFixed(2)} kg
+                            </span>
+                          </div>
+                          <div className="bg-white border border-brand-border/60 rounded-xl p-2 flex flex-col gap-1 text-center shadow-5xs hover:border-[#10B981]/30 transition-all">
+                            <span className="text-[8px] font-extrabold text-brand-muted">📆 12 週後自律</span>
+                            <span className="text-[9px] font-bold text-[#059669] font-mono">-{deltaW12.toFixed(2)} kg</span>
+                            <span className="text-[10px] font-mono font-bold text-brand-text">
+                              {(latestWeight - deltaW12).toFixed(2)} kg
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Adaptive Context Warning/Insight */}
+                        <div className="bg-[#FAF9F6] border border-[#E5E2D9] rounded-xl p-2.5 text-[9px] leading-relaxed text-[#5C564A]">
+                          {todayDeficit > 0 ? (
+                            <span className="flex items-start gap-1">
+                              <span className="text-xs">✨</span>
+                              <span>
+                                <strong>幹得好！</strong>按今日自律步調（赤字{" "}
+                                <span className="font-mono font-bold text-[#059669]">{todayDeficit} kcal</span>
+                                /天）持續下去，12週後您將穩健減輕{" "}
+                                <span className="font-mono font-bold text-[#059669]">{deltaW12.toFixed(1)} kg</span>{" "}
+                                脂肪複利！
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="flex items-start gap-1">
+                              <span className="text-xs">💡</span>
+                              <span>
+                                目前今日尚未形成熱量赤字（或暫為負值）。
+                                <strong>上圖已為您採用健康目標（赤字 500 kcal/天）進行自律模擬預估。</strong>
+                                加把勁！動起來或少吃一口，啟動燃脂引擎吧！
+                              </span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Enter weight manually */}
                   <form onSubmit={handleWeightSubmit} className="bg-brand-cream border border-brand-border p-3.5 rounded-2xl flex flex-col gap-2 shadow-4xs">
                     <span className="text-[10px] font-extrabold text-[#5C564A] block">⚖️ 補充登錄今日體格數據</span>
