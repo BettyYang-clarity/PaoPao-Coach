@@ -377,6 +377,70 @@ export default function App() {
 
   // Empathy chat message submission
   const handleSendMessage = async (userText: string) => {
+    const getTodaySummary = () => {
+      const todayStr = new Date().toDateString();
+      let kcal = 0;
+      let water = 0;
+      let exercise = 0;
+      let sleep = 0;
+      let protein = 0;
+      let burnedKcal = 0;
+
+      state.records.forEach((r) => {
+        const recordDate = new Date(r.timestamp);
+        if (recordDate.toDateString() === todayStr) {
+          if (r.type === "diet") {
+            kcal += r.estimatedValue || 0;
+            if (r.proteinGrams) {
+              protein += r.proteinGrams;
+            }
+          }
+          if (r.type === "water") water += r.estimatedValue || 0;
+          if (r.type === "exercise") {
+            exercise += r.estimatedValue || 0;
+            if (r.caloriesBurned) {
+              burnedKcal += r.caloriesBurned;
+            } else if (r.estimatedValue) {
+              burnedKcal += Math.round(r.estimatedValue * 6.5);
+            }
+          }
+          if (r.type === "sleep") sleep += r.estimatedValue || 0;
+        }
+      });
+
+      const weight = state.profile.weight || 65;
+      const height = state.profile.height || 170;
+      const age = state.profile.age || 28;
+      const gender = state.profile.gender || "不公開";
+      const activity = state.profile.activityLevel || "lightly_active";
+
+      let s = -78;
+      if (gender === "男生") s = 5;
+      else if (gender === "女生") s = -161;
+
+      const bmr = 10 * weight + 6.25 * height - 5 * age + s;
+      let pal = 1.375;
+      if (activity === "sedentary") pal = 1.2;
+      else if (activity === "lightly_active") pal = 1.375;
+      else if (activity === "moderately_active") pal = 1.55;
+      else if (activity === "very_active") pal = 1.725;
+
+      const tdee = Math.round(bmr * pal) > 1000 ? Math.round(bmr * pal) : 1600;
+      const netDeficit = (tdee + burnedKcal) - kcal;
+
+      return {
+        tdee,
+        dietKcal: kcal,
+        exerciseMin: exercise,
+        burnedKcal,
+        waterMl: water,
+        sleepHours: sleep,
+        proteinGrams: protein,
+        netDeficit,
+        localTime: new Date().toString()
+      };
+    };
+
     // Append user message immediately to the feed
     const userMsg: ChatMessage = {
       id: `m-usr-${Date.now()}`,
@@ -404,7 +468,9 @@ export default function App() {
         body: JSON.stringify({
           message: userText,
           history: chatHistory,
-          profile: state.profile
+          profile: state.profile,
+          todaySummary: getTodaySummary(),
+          recentRecords: state.records.slice(-15)
         }),
         signal: controller.signal
       });

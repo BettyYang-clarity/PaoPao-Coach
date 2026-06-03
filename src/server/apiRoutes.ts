@@ -235,7 +235,7 @@ function isApiKeyPresent(): boolean {
  */
 export async function handleCoachChat(req: any, res: any) {
   try {
-    const { message, history, profile } = req.body;
+    const { message, history, profile, todaySummary, recentRecords } = req.body;
     const lowerMessage = message?.toLowerCase() || "";
     const goalStr = profile?.customGoal || "維持健康生活方式";
     const guidelineText = profile?.selectedHabits && profile.selectedHabits.length > 0
@@ -247,6 +247,18 @@ export async function handleCoachChat(req: any, res: any) {
     let systemWarning = "";
     if (!keyPresent) {
       systemWarning = "⚠️ 【系統診斷：尚未設定您的 GEMINI_API_KEY 金鑰。此為自主託管的 Vercel 佈署，請至您的 Vercel 專案 Dashboard ➔ Settings ➔ Environment Variables 新增名為 `GEMINI_API_KEY` 的環境變數即可啟用真實的 AI 智慧教練！暫時為您啟用高品質原子習慣模擬對話。】\n\n";
+    }
+
+    let summaryText = "";
+    if (todaySummary) {
+      const netDef = todaySummary.netDeficit;
+      summaryText = `\n\n📊 【今日能量收支即時診斷】：
+• 目前已攝取：**${todaySummary.dietKcal}** kcal
+• 運動已消耗：**${todaySummary.burnedKcal}** kcal
+• TDEE 估算：**${todaySummary.tdee}** kcal
+• 目前能量赤字：${netDef > 0 ? `🟢 **${netDef}** kcal (自律成效卓越！)` : `⚠️ **${netDef}** kcal (尚未形成赤字)`}
+${netDef <= 0 ? "💡 【教練溫和提醒】：目前尚未達到能量赤字唷。如果今天不累的話，不妨找個時間站起來伸展 15 分鐘，或在飯後輕鬆散步十分鐘，溫和啟動身體的燃脂引擎吧！🌱" : "🎉 【教練讚賞】：做得好！目前赤字狀態正完美複利中，保持愉快，先喝杯水歇會兒吧！"}
+`;
     }
 
     if (keyPresent) {
@@ -377,7 +389,7 @@ ${message}`;
 💡 依照世界權威【哈佛健康餐盤】指引，我們可以將每餐分配分為三個重要區塊：蔬菜佔一半（多樣化），優質全穀物（如十穀、糙米）佔 1/4，健康蛋白質（如豆製品、魚、蛋與瘦肉）佔 1/4。這是不需要特定處方，每個人都能輕鬆愛護自己的極佳基準！
 
 🎯 【目標提醒】：${goalStr}。
-☘️ 【微習慣建議】：今天晚餐的第一口，請試著先從「一口蛋白質」或「一口蔬菜」開始吃起，以此取代精緻澱粉的先發吸收，幫助身體無壓力感受平穩活力！`,
+☘️ 【微習慣建議】：今天晚餐的第一口，請試著先從「一口蛋白質」或「一口蔬菜」開始吃起，以此取代精緻澱粉的先發吸收，幫助身體無壓力感受平穩活力！` + summaryText,
         pendingRecord: {
           type: "diet",
           title: foodKey,
@@ -417,7 +429,7 @@ ${message}`;
 你可以如何無痛放大這個好習慣：
 ☘️ 【微習慣建議】：在剛運動完的這 30 分鐘，請順手給自己盛上一杯 300ml 的微溫水，一口口慢吞吞地喝完它。這是最棒、最簡單、也最不需要意志力就能幫助肌肉修補和加速乳酸代謝的習慣連結。
 
-今天真的做得太棒了，持續累積你的微小改變吧！`,
+今天真的做得太棒了，持續累積你的微小改變吧！` + summaryText,
         pendingRecord: {
           type: "exercise",
           title: exerciseKey,
@@ -460,7 +472,7 @@ ${message}`;
 💡 依照世界權威【哈佛健康餐盤】指引，我們可以將每餐分配分為三個重要區塊：蔬菜佔一半（多樣化），優質全穀物（如十穀、糙米）佔 1/4，健康蛋白質（如豆製品、魚、蛋與瘦肉）佔 1/4。這是不需要特定處方，每個人都能輕鬆愛護自己的極佳基準！
 
 🎯 【目標提醒】：${goalStr}。
-☘️ 【微習慣建議】：今天晚餐的第一口，請試著先從「一口蛋白質」或「一口蔬菜」開始吃起，以此取代精緻澱粉的先發吸收，幫助身體無壓力感受平穩活力！`,
+☘️ 【微習慣建議】：今天晚餐的第一口，請試著先從「一口蛋白質」或「一口蔬菜」開始吃起，以此取代精緻澱粉的先發吸收，幫助身體無壓力感受平穩活力！` + summaryText,
         pendingRecord: {
           type: "diet",
           title: extractedTitle,
@@ -505,7 +517,7 @@ ${message}`;
 你可以如何無痛放大這個好習慣：
 ☘️ 【微習慣建議】：在剛運動完的這 30 分鐘，請順手給自己盛上一杯 300ml 的微溫水，一口口慢吞吞地喝完它。這是最棒、最簡單、也最不需要意志力就能幫助肌肉修補 and 加速乳酸代謝的習慣連結。
 
-今天真的做得太棒了，持續累積你的微小改變吧！`,
+今天真的做得太棒了，持續累積你的微小改變吧！` + summaryText,
         pendingRecord: {
           type: "exercise",
           title: extractedTitle,
@@ -523,14 +535,14 @@ ${message}`;
 『我是您的 PaoPao健康陪跑教練，我可以為您提供大眾健康指引，但不能為您開立專屬醫療診斷與個人化臨床飲食處方。如有特定疾病、特殊控制或治療需求，請務必諮詢執業醫師、實體營養師等專業醫療機構。』
 
 🎯 【目標提醒】：${goalStr}${guidelineText}。依照哈佛健康餐盤，只要多吃原型食物、多喝溫白開水，每天稍微推進 1%, 就是在累積改變的複利！
-☘️ 【可以怎麼做】：我們現在來個低磨損挑戰——深深用鼻子吸氣 4 秒、再用嘴巴吐氣 6 秒，連續做 2 次。這能馬上重置大腦壓力，你覺得如何？努力就是滿分！`,
+☘️ 【可以怎麼做】：我們現在來個低磨損挑戰——深深用鼻子吸氣 4 秒、再用嘴巴吐氣 6 秒，連續做 2 次。這能馬上重置大腦壓力，你覺得如何？努力就是滿分！` + summaryText,
  
       systemWarning + `【PaoPao教練提示】\n（溫柔拍肩）我非常理解夥伴的心情！生活本來就是由各種不完美、偶爾的美食和大炸雞拼湊而成的。這才是最快樂健康的生理常規狀態！
 
 『我是您的 PaoPao健康陪跑教練，我可以為您提供大眾健康觀念，但不能為您開立專屬診斷與處方。』
  
 🎯 【目標提醒】：${goalStr}${guidelineText}。不要讓大餐或偶爾的熱量飆高變成罪惡感，誠實記錄下來，就代表生活的油門與煞車主導權依然牢牢握在你的手中。
-☘️ 【可以怎麼做】：不如現在去倒一杯 250ml 的溫開水喝下去？健康指標顯示，多補充乾淨水分是體內代謝最重要的潤滑劑。你已經做得非常棒了！`
+☘️ 【可以怎麼做】：不如現在去倒一杯 250ml 的溫開水喝下去？健康指標顯示，多補充乾淨水分是體內代謝最重要的潤滑劑。你已經做得非常棒了！` + summaryText
     ];
 
     const randomResp = responses[Math.floor(Math.random() * responses.length)];

@@ -144,6 +144,9 @@ const COACH_SYSTEM_PROMPT = `你是一位充滿溫度、溫和且高度同理心
    - 當使用者提及食物相關內容時，你必須主動估算並明確標記其「熱量（卡路里，kcal）」與「蛋白質含量（公克，g）」，並以結構化方式呈現。
    - 當使用者提及運動或身體活動相關內容時，你必須主動估算並明確標記其「運動時間（分鐘）」與「預估熱量消耗（大卡，kcal，可每分鐘消耗約 6.5 大卡做大眾科普粗估）」，並以條列式與粗體字等結構化方式呈現！避免敷衍回答。
    - 引導使用者往「原型食物（蔬菜佔半，穀物與蛋白各 1/4）」前進，幫助建立無摩擦的飲食健康良性連結。
+3. 【結合今日收支統計與歷程提醒】：
+   - 你將在 context 中獲得 `【今日生理與代謝收支統計 (Today Summary)】` 與 `【近期生活及習慣紀錄 (Recent Logs)】`。
+   - 當使用者諮詢建議或分享狀態時，請主動解讀今日收支。例如：如果發現今日能量赤字 `netDeficit` 尚未達成（小於或等於 0），請給予溫柔關懷，並提醒今日的數據狀態（今日目前已攝取了多少大卡、運動消耗了多少大卡），鼓勵可以找個時間站起來動一動、拉拉筋或吃飽後散步 10 分鐘來開啟赤字，但如果使用者累了，也請強調「先好好休息、明天再重啟也完全沒關係，你的誠實記錄就是最好的習慣！」。
 
 【JSON 輸出規範限制】：
 - 請一律以 JSON 格式回應！不要包含 any markdown 語法包裝（如 \`\`\`json）。
@@ -209,7 +212,7 @@ const fallbackExercises = {
 
 export default async function handler(req: Request, res: Response) {
   try {
-    const { message, history, profile } = req.body || {};
+    const { message, history, profile, todaySummary, recentRecords } = req.body || {};
     const lowerMessage = message?.toLowerCase() || "";
     const goalStr = profile?.customGoal || "維持健康生活方式";
     const guidelineText = profile?.selectedHabits && profile.selectedHabits.length > 0
@@ -223,11 +226,29 @@ export default async function handler(req: Request, res: Response) {
       systemWarning = "⚠️ 【系統診斷：尚未設定您的 GEMINI_API_KEY 金鑰。此為自主託管的 Vercel 佈署，請至您的 Vercel 專案 Dashboard ➔ Settings ➔ Environment Variables 新增名為 `GEMINI_API_KEY` 的環境變數即可啟用真實的 AI 智慧教練！暫時為您啟用高品質原子習慣模擬對話。】\n\n";
     }
 
+    let summaryText = "";
+    if (todaySummary) {
+      const netDef = todaySummary.netDeficit;
+      summaryText = `\n\n📊 【今日能量收支即時診斷】：
+• 目前已攝取：**${todaySummary.dietKcal}** kcal
+• 運動已消耗：**${todaySummary.burnedKcal}** kcal
+• TDEE 估算：**${todaySummary.tdee}** kcal
+• 目前能量赤字：${netDef > 0 ? `🟢 **${netDef}** kcal (自律成效卓越！)` : `⚠️ **${netDef}** kcal (尚未形成赤字)`}
+${netDef <= 0 ? "💡 【教練溫和提醒】：目前尚未達到能量赤字唷。如果今天不累的話，不妨找個時間站起來伸展 15 分鐘，或在飯後輕鬆散步十分鐘，溫和啟動身體的燃脂引擎吧！🌱" : "🎉 【教練讚賞】：做得好！目前赤字狀態正完美複利中，保持愉快，先喝杯水歇會兒吧！"}
+`;
+    }
+
     if (keyPresent) {
       try {
         const ai = getGeminiClient();
         const prompt = `【使用者個人檔案】
 ${JSON.stringify(profile)}
+
+【今日生理與代謝收支統計 (Today Summary)】
+${todaySummary ? JSON.stringify(todaySummary) : "目前尚無今日統計數據"}
+
+【近期生活及習慣紀錄 (Recent Logs)】
+${recentRecords && Array.isArray(recentRecords) && recentRecords.length > 0 ? recentRecords.map((r: any) => `- ${new Date(r.timestamp).toLocaleDateString()}: [${r.type}] ${r.title} (${r.estimatedValue || 0}${r.unit}) - PaoPao回饋: ${r.coachFeedback}`).join("\n") : "無記錄"}
 
 【歷史對話紀錄】
 ${history && Array.isArray(history) ? history.map((m: any) => `${m.sender === "bot" ? "教練(PaoPao)" : "使用者"}: ${m.text}`).join("\n") : "無"}
@@ -343,7 +364,7 @@ ${message}`;
 💡 依照世界權威【哈佛健康餐盤】指引，我們可以將每餐分配分為三個重要區塊：蔬菜佔一半（多樣化），優質全穀物（如十穀、糙米）佔 1/4，健康蛋白質（如豆製品、魚、蛋與瘦肉）佔 1/4。這是不需要特定處方，每個人都能輕鬆愛護自己的極佳基準！
 
 🎯 【目標提醒】：${goalStr}。
-☘️ 【微習慣建議】：今天晚餐的第一口，請試著先從「一口蛋白質」或「一口蔬菜」開始吃起，以此取代精緻澱粉的先發吸收，幫助身體無壓力感受平穩活力！`,
+☘️ 【微習慣建議】：今天晚餐的第一口，請試著先從「一口蛋白質」或「一口蔬菜」開始吃起，以此取代精緻澱粉的先發吸收，幫助身體無壓力感受平穩活力！` + summaryText,
         pendingRecord: {
           type: "diet",
           title: foodKey,
@@ -382,7 +403,7 @@ ${message}`;
 你可以如何無痛放大這個好習慣：
 ☘️ 【微習慣建議】：在剛運動完的這 30 分鐘，請順手給自己盛上一杯 300ml 的微溫水，一口口慢吞吞地喝完它。這是最棒、最簡單、也最不需要意志力就能幫助肌肉修補 and 加速乳酸代謝的習慣連結。
 
-今天真的做得太棒了，持續累積你的微小改變吧！`,
+今天真的做得太棒了，持續累積你的微小改變吧！` + summaryText,
         pendingRecord: {
           type: "exercise",
           title: exerciseKey,
@@ -425,7 +446,7 @@ ${message}`;
 💡 依照世界權威【哈佛健康餐盤】指引，我們可以將每餐分配分為三個重要區塊：蔬菜佔一半（多樣化），優質全穀物（如十穀、糙米）佔 1/4，健康蛋白質（如豆製品、魚、蛋與瘦肉）佔 1/4。這是不需要特定處方，每個人都能輕鬆愛護自己的極佳基準！
 
 🎯 【目標提醒】：${goalStr}。
-☘️ 【微習慣建議】：今天晚餐的第一口，請試著先從「一口蛋白質」或「一口蔬菜」開始吃起，以此取代精緻澱粉的先發吸收，幫助身體無壓力感受平穩活力！`,
+☘️ 【微習慣建議】：今天晚餐的第一口，請試著先從「一口蛋白質」或「一口蔬菜」開始吃起，以此取代精緻澱粉的先發吸收，幫助身體無壓力感受平穩活力！` + summaryText,
         pendingRecord: {
           type: "diet",
           title: extractedTitle,
@@ -470,7 +491,7 @@ ${message}`;
 你可以如何無痛放大這個好習慣：
 ☘️ 【微習慣建議】：在剛運動完的這 30 分鐘，請順手給自己盛上一杯 300ml 的微溫水，一口口慢吞吞地喝完它。這是最棒、最簡單、也最不需要意志力就能幫助肌肉修補 and 加速乳酸代謝的習慣連結。
 
-今天真的做得太棒了，持續累積你的微小改變吧！`,
+今天真的做得太棒了，持續累積你的微小改變吧！` + summaryText,
         pendingRecord: {
           type: "exercise",
           title: extractedTitle,
