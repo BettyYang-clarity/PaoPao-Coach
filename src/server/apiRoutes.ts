@@ -153,6 +153,9 @@ const COACH_SYSTEM_PROMPT = `你是一位充滿溫度、溫和且高度同理心
    - 當使用者提及食物相關內容時，你必須主動估算並明確標記其「熱量（卡路里，kcal）」與「蛋白質含量（公克，g）」，並以結構化方式呈現。
    - 當使用者提及運動或身體活動相關內容時，你必須主動估算並明確標記其「運動時間（分鐘）」與「預估熱量消耗（大卡，kcal，可每分鐘消耗約 6.5 大卡做大眾科普粗估）」，並以條列式與粗體字等結構化方式呈現！避免敷衍回答。
    - 引導使用者往「原型食物（蔬菜佔半，穀物與蛋白各 1/4）」前進，幫助建立無摩擦的飲食健康良性連結。
+3. 【結合今日收支統計與歷程提醒】：
+   - 你將在 context 中獲得 \`【今日生理與代謝收支統計 (Today Summary)】\` 與 \`【近期生活及習慣紀錄 (Recent Logs)】\`。
+   - 當使用者諮詢建議或分享狀態時，請主動解讀今日收支。例如：如果發現今日能量赤字 \`netDeficit\` 尚未達成（小於或等於 0），請給予溫柔關懷，並提醒今日的數據狀態（今日目前已攝取了多少大卡、運動消耗了多少大卡），鼓勵可以找個時間站起來動一動、拉拉筋或吃飽後散步 10 分鐘來開啟赤字，但如果使用者累了，也請強調「先好好休息、明天再重啟也完全沒關係，你的誠實記錄就是最好的習慣！」。
 
 【JSON 輸出規範限制】：
 - 請一律以 JSON 格式回應！不要包含任何 markdown 語法包裝（如 \`\`\`json）。
@@ -266,6 +269,12 @@ ${netDef <= 0 ? "💡 【教練溫和提醒】：目前尚未達到能量赤字�
         const ai = getGeminiClient();
         const prompt = `【使用者個人檔案】
 ${JSON.stringify(profile)}
+
+【今日生理與代謝收支統計 (Today Summary)】
+${todaySummary ? JSON.stringify(todaySummary) : "目前尚無今日統計數據"}
+
+【近期生活及習慣紀錄 (Recent Logs)】
+${recentRecords && Array.isArray(recentRecords) && recentRecords.length > 0 ? recentRecords.map((r: any) => `- ${new Date(r.timestamp).toLocaleDateString()}: [${r.type}] ${r.title} (${r.estimatedValue || 0}${r.unit}) - PaoPao回饋: ${r.coachFeedback}`).join("\n") : "無記錄"}
 
 【歷史對話紀錄】
 ${history && Array.isArray(history) ? history.map((m: any) => `${m.sender === "bot" ? "教練(PaoPao)" : "使用者"}: ${m.text}`).join("\n") : "無"}
