@@ -977,7 +977,19 @@ export default function WellnessDashboard({
                       </button>
                       <button
                         type="button"
-                        onClick={() => logQuickAction('diet', '餐前喝開水 350ml 💧', 0, '餐前350ml 飽腹感水份，有效杜絕大腦偽食物訊號，加 15 點！')}
+                        onClick={() => {
+                          const freshRecord: WellnessRecord = {
+                            id: `r-water-${Date.now()}`,
+                            timestamp: getRecordTimestamp(),
+                            type: "water",
+                            title: "飯前喝開水 350ml 💧",
+                            estimatedValue: 350,
+                            unit: "毫升",
+                            pointsEarned: 15,
+                            coachFeedback: "餐前 350ml 飽腹感水分，有效杜絕大腦偽食物訊號，同時啟動胃部蠕動與代謝加速！繼續保持！"
+                          };
+                          onAddRecord(freshRecord);
+                        }}
                         className="py-1.5 bg-white hover:bg-brand-cream text-[#5C564A] font-sans font-extrabold text-[10px] rounded-lg border border-brand-border transition-all active:scale-95 cursor-pointer shadow-4xs"
                       >
                         💧 飯前 +350ml
