@@ -35,6 +35,7 @@ export interface WellnessRecord {
   coachFeedback: string;
   pointsEarned: number;
   proteinGrams?: number; // Optional protein tracking in grams
+  mealType?: 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'other'; // Optional meal type: 早餐 | 午餐 | 晚餐 | 宵夜 | 其他
   caloriesBurned?: number; // Optional calories burned in kcal (specifically for exercise type)
   bodyFatPercent?: number; // Optional body fat portion trackers
   nutritionRough?: {

@@ -158,6 +158,14 @@ export default function CoachChat({
     const offset = d.getTimezoneOffset() * 60000;
     return new Date(d.getTime() - offset).toISOString().split('T')[0];
   });
+  const [saveMealType, setSaveMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | 'other'>(() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 11) return 'breakfast';
+    if (hour >= 11 && hour < 17) return 'lunch';
+    if (hour >= 17 && hour < 22) return 'dinner';
+    if (hour >= 22 || hour < 5) return 'snack';
+    return 'other';
+  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -427,6 +435,7 @@ export default function CoachChat({
       imageUrl: pendingAnalysis.base64,
       estimatedValue: pendingAnalysis.estimatedValue,
       unit: pendingAnalysis.unit,
+      mealType: pendingAnalysis.type === "diet" ? saveMealType : undefined,
       proteinGrams: pendingAnalysis.type === "diet" ? pendingAnalysis.proteinGrams : undefined,
       caloriesBurned: pendingAnalysis.type === "exercise" ? pendingAnalysis.caloriesBurned : undefined,
       pointsEarned: pendingAnalysis.pointsEarned,
@@ -442,8 +451,9 @@ export default function CoachChat({
         `消耗熱量 ${pendingAnalysis.caloriesBurned || 0} 大卡`
       ];
     } else {
+      const mealLabels = { breakfast: "🌅 早餐", lunch: "☀️ 午餐", dinner: "🌙 晚餐", snack: "🌌 宵夜", other: "🍎 其他" };
       parts = [
-        `✅ 已儲存「${displayTitle}」`,
+        `✅ 已儲存「${displayTitle}」(${mealLabels[saveMealType]})`,
         `熱量 ${pendingAnalysis.estimatedValue} 大卡`,
         `蛋白質 ${pendingAnalysis.proteinGrams}g`,
         `碳水 ${pendingAnalysis.carbsGrams}g`,
@@ -644,6 +654,26 @@ export default function CoachChat({
                 max={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]}
               />
             </div>
+
+            {/* 餐別選擇 */}
+            {pendingAnalysis.type === "diet" && (
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] text-slate-500 font-semibold">
+                  餐別
+                </label>
+                <select
+                  className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 text-xs font-sans outline-none focus:ring-1 focus:ring-emerald-300 cursor-pointer"
+                  value={saveMealType}
+                  onChange={(e) => setSaveMealType(e.target.value as any)}
+                >
+                  <option value="breakfast">🌅 早餐</option>
+                  <option value="lunch">☀️ 午餐</option>
+                  <option value="dinner">🌙 晚餐</option>
+                  <option value="snack">🌌 宵夜</option>
+                  <option value="other">🍎 其他</option>
+                </select>
+              </div>
+            )}
 
             {/* Food or Exercise name */}
             <div className="flex flex-col gap-1">

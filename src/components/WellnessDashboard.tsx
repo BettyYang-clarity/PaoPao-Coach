@@ -124,6 +124,18 @@ export default function WellnessDashboard({
   const [editProtein, setEditProtein] = useState<number | "">("");
   const [editBurnedKcal, setEditBurnedKcal] = useState<number | "">("");
   const [editBodyFat, setEditBodyFat] = useState<number | "">("");
+  const [editMealType, setEditMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | 'other' | "">("");
+
+  const getDefaultMealType = (): 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'other' => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 11) return 'breakfast';
+    if (hour >= 11 && hour < 17) return 'lunch';
+    if (hour >= 17 && hour < 22) return 'dinner';
+    if (hour >= 22 || hour < 5) return 'snack';
+    return 'other';
+  };
+
+  const [dietMealType, setDietMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | 'other'>(getDefaultMealType());
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -455,6 +467,19 @@ export default function WellnessDashboard({
       const title = dietTitle.trim() || "誠實飲食小記錄";
       const kcal = Number(dietKcal) || 350;
       const proteinVal = dietProtein !== "" ? Number(dietProtein) : undefined;
+
+      let customFeedback = `誠實記錄了『${title}』${proteinVal !== undefined ? `（含 ${proteinVal} 克蛋白質）` : ""}，是今日的健康存款！`;
+      if (dietMealType === 'breakfast') {
+        customFeedback = `🌅 活力早餐已登記！『${title}』${proteinVal !== undefined ? `（含 ${proteinVal} 克蛋白質）` : ""}。一份優質早餐能穩定你白天的胰島素，開啟一整天的自律複利，幹得好！`;
+      } else if (dietMealType === 'lunch') {
+        customFeedback = `☀️ 飽足午餐已登記！『${title}』${proteinVal !== undefined ? `（含 ${proteinVal} 克蛋白質）` : ""}。下午是精神最緊繃的時刻，攝取足夠營養能平穩能量波形，繼續前行！`;
+      } else if (dietMealType === 'dinner') {
+        customFeedback = `🌙 溫馨晚餐已登記！『${title}』${proteinVal !== undefined ? `（含 ${proteinVal} 克蛋白質）` : ""}。晚間飲食宜溫和適量，這能為你的胃腸與睡眠提供完美的修復環境唷！`;
+      } else if (dietMealType === 'snack') {
+        customFeedback = `🌌 宵夜小記。你誠實地記錄了『${title}』。沒關係的，偶爾的口腹放鬆也是情緒的特赦盾牌！建議可以搭配一杯熱水或深呼吸，安心休息，明天我們溫和重啟自律生活。`;
+      } else if (dietMealType === 'other') {
+        customFeedback = `🍎 點心/其他補給小記！『${title}』。主動覺察並誠實寫下每一次額外攝取，就是養成原子生活最核心的基石！`;
+      }
       
       freshRecord = {
         id: `r-diet-${Date.now()}`,
@@ -464,6 +489,7 @@ export default function WellnessDashboard({
         estimatedValue: kcal,
         unit: "大卡",
         pointsEarned: 20,
+        mealType: dietMealType,
         proteinGrams: proteinVal,
         nutritionRough: {
           carbs: "充足 (碳水提供能量)",
@@ -471,7 +497,7 @@ export default function WellnessDashboard({
           fat: "適量",
           veg: "較少 (記得下一頓多吃幾口青菜唷)"
         },
-        coachFeedback: `誠實記錄了『${title}』${proteinVal !== undefined ? `（含 ${proteinVal} 克蛋白質）` : ""}，是今日的健康存款！`
+        coachFeedback: customFeedback
       };
 
       setDietTitle("");
@@ -831,22 +857,36 @@ export default function WellnessDashboard({
                       required
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <div className="flex flex-col gap-1">
-                      <span className="text-[9.5px] font-bold text-[#80796B] uppercase font-sans">2. 幾大卡(選填)：</span>
+                      <span className="text-[9.5px] font-bold text-[#80796B] uppercase font-sans">2. 餐別：</span>
+                      <select
+                        className="w-full px-2 py-1.5 bg-white border border-brand-border rounded-xl font-sans text-xs text-brand-text focus:outline-hidden focus:ring-1 focus:ring-brand-green/30 shadow-4xs"
+                        value={dietMealType}
+                        onChange={(e) => setDietMealType(e.target.value as any)}
+                      >
+                        <option value="breakfast">🌅 早餐</option>
+                        <option value="lunch">☀️ 午餐</option>
+                        <option value="dinner">🌙 晚餐</option>
+                        <option value="snack">🌌 宵夜</option>
+                        <option value="other">🍎 其他</option>
+                      </select>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[9.5px] font-bold text-[#80796B] uppercase font-sans">3. 大卡(選填)：</span>
                       <input
                         type="number"
-                        className="w-full px-3 py-1.5 bg-white border border-brand-border rounded-xl font-sans text-xs text-brand-text focus:outline-hidden focus:ring-1 focus:ring-brand-green/30 shadow-4xs"
+                        className="w-full px-2 py-1.5 bg-white border border-brand-border rounded-xl font-sans text-xs text-brand-text focus:outline-hidden focus:ring-1 focus:ring-brand-green/30 shadow-4xs"
                         value={dietKcal}
                         onChange={(e) => setDietKcal(e.target.value ? Number(e.target.value) : "")}
                         placeholder="例：350"
                       />
                     </div>
                     <div className="flex flex-col gap-1">
-                      <span className="text-[9.5px] font-bold text-[#80796B] uppercase font-sans">3. 蛋白克(選填)：</span>
+                      <span className="text-[9.5px] font-bold text-[#80796B] uppercase font-sans">4. 蛋白g(選填)：</span>
                       <input
                         type="number"
-                        className="w-full px-3 py-1.5 bg-white border border-brand-border rounded-xl font-sans text-xs text-brand-text focus:outline-hidden focus:ring-1 focus:ring-brand-green/30 shadow-4xs"
+                        className="w-full px-2 py-1.5 bg-white border border-brand-border rounded-xl font-sans text-xs text-brand-text focus:outline-hidden focus:ring-1 focus:ring-brand-green/30 shadow-4xs"
                         value={dietProtein}
                         onChange={(e) => setDietProtein(e.target.value ? Number(e.target.value) : "")}
                         placeholder="例：22"
@@ -1406,8 +1446,22 @@ export default function WellnessDashboard({
                 />
               </div>
               {activeTab === "diet" && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <div className="flex flex-col gap-1.5">
+                    <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-brand-muted">餐別</label>
+                    <select
+                      className="w-full px-3 py-2 bg-brand-cream border border-brand-border rounded-xl font-sans text-xs text-brand-text focus:outline-hidden focus:ring-2 focus:ring-brand-green/30 focus:bg-white cursor-pointer"
+                      value={dietMealType}
+                      onChange={(e) => setDietMealType(e.target.value as any)}
+                    >
+                      <option value="breakfast">🌅 早餐</option>
+                      <option value="lunch">☀️ 午餐</option>
+                      <option value="dinner">🌙 晚餐</option>
+                      <option value="snack">🌌 宵夜</option>
+                      <option value="other">🍎 其他</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1.5 font-sans">
                     <label className="font-sans text-[10px] font-bold uppercase tracking-wider text-brand-muted">食物或飲品名稱</label>
                     <input
                       type="text"
@@ -1791,7 +1845,8 @@ export default function WellnessDashboard({
                                       estimatedValue: editValue !== "" ? Number(editValue) : undefined,
                                       proteinGrams: editProtein !== "" ? Number(editProtein) : undefined,
                                       caloriesBurned: editBurnedKcal !== "" ? Number(editBurnedKcal) : undefined,
-                                      bodyFatPercent: editBodyFat !== "" ? Number(editBodyFat) : undefined
+                                      bodyFatPercent: editBodyFat !== "" ? Number(editBodyFat) : undefined,
+                                      mealType: editMealType || undefined
                                     };
                                     onUpdateRecord?.(updated);
                                     setEditingRecordId(null);
@@ -1830,6 +1885,23 @@ export default function WellnessDashboard({
                                     value={editValue}
                                     onChange={(e) => setEditValue(e.target.value !== "" ? Number(e.target.value) : "")}
                                   />
+                                </div>
+                              )}
+
+                              {rec.type === 'diet' && (
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-[9px] text-[#80796B] font-bold">餐別：</span>
+                                  <select
+                                    className="px-2.5 py-1.5 bg-brand-cream/40 border border-brand-border rounded-lg text-xs font-sans text-brand-text w-full focus:outline-hidden focus:border-brand-green/50"
+                                    value={editMealType}
+                                    onChange={(e) => setEditMealType(e.target.value as any)}
+                                  >
+                                    <option value="breakfast">🌅 早餐</option>
+                                    <option value="lunch">☀️ 午餐</option>
+                                    <option value="dinner">🌙 晚餐</option>
+                                    <option value="snack">🌌 宵夜</option>
+                                    <option value="other">🍎 其他</option>
+                                  </select>
                                 </div>
                               )}
 
@@ -1932,6 +2004,7 @@ export default function WellnessDashboard({
                                         setEditProtein(rec.proteinGrams !== undefined ? rec.proteinGrams : "");
                                         setEditBurnedKcal(rec.caloriesBurned !== undefined ? rec.caloriesBurned : "");
                                         setEditBodyFat(rec.bodyFatPercent !== undefined ? rec.bodyFatPercent : "");
+                                        setEditMealType(rec.mealType || "");
                                       }}
                                       className="px-2 py-0.5 text-[10px] text-brand-text hover:text-white hover:bg-brand-green/95 border border-brand-border hover:border-brand-green rounded-xl transition-all cursor-pointer flex items-center gap-1"
                                       title="編輯這筆紀錄"
@@ -1958,6 +2031,15 @@ export default function WellnessDashboard({
 
                           {rec.estimatedValue !== undefined && (
                             <div className="flex flex-wrap gap-1 text-[8.5px]">
+                              {rec.type === 'diet' && rec.mealType && (
+                                <span className="px-1.5 py-0.5 bg-yellow-50 border border-yellow-200/50 rounded font-sans text-yellow-800 font-bold">
+                                  {rec.mealType === 'breakfast' && '🌅 早餐'}
+                                  {rec.mealType === 'lunch' && '☀️ 午餐'}
+                                  {rec.mealType === 'dinner' && '🌙 晚餐'}
+                                  {rec.mealType === 'snack' && '🌌 宵夜'}
+                                  {rec.mealType === 'other' && '🍎 點心/其他'}
+                                </span>
+                              )}
                               <span className="px-1.5 py-0.5 bg-white border border-brand-border rounded font-sans text-brand-muted">
                                 數值：{rec.estimatedValue} {rec.unit}
                               </span>
