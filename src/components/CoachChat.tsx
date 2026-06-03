@@ -153,6 +153,11 @@ export default function CoachChat({
   const [pendingAnalysis, setPendingAnalysis] = useState<PendingAnalysis | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [saveLogDate, setSaveLogDate] = useState<string>(() => {
+    const d = new Date();
+    const offset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - offset).toISOString().split('T')[0];
+  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -405,9 +410,18 @@ export default function CoachChat({
     const prefix = pendingAnalysis.type === "exercise" ? "🏃‍♀️" : "🍱";
     const displayTitle = isPrefixed ? pendingAnalysis.title : `${prefix} ${pendingAnalysis.title}`;
 
+    const offset = new Date().getTimezoneOffset() * 60000;
+    const todayStr = new Date(Date.now() - offset).toISOString().split('T')[0];
+    let finalTimestamp = new Date().toISOString();
+    if (saveLogDate !== todayStr) {
+      const now = new Date();
+      const [year, month, day] = saveLogDate.split('-').map(Number);
+      finalTimestamp = new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds()).toISOString();
+    }
+
     onImageAnalysisResult({
       id: `r-ai-${Date.now()}`,
-      timestamp: new Date().toISOString(),
+      timestamp: finalTimestamp,
       type: pendingAnalysis.type,
       title: displayTitle,
       imageUrl: pendingAnalysis.base64,
@@ -617,6 +631,20 @@ export default function CoachChat({
           </div>
 
           <div className="px-3.5 py-2.5 flex flex-col gap-2.5 overflow-y-auto flex-1 min-h-0 text-left">
+            {/* 紀錄日期 */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] text-slate-500 font-semibold">
+                紀錄日期 (補登記)
+              </label>
+              <input
+                type="date"
+                className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 text-xs font-sans outline-none focus:ring-1 focus:ring-emerald-300"
+                value={saveLogDate}
+                onChange={(e) => setSaveLogDate(e.target.value || new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0])}
+                max={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]}
+              />
+            </div>
+
             {/* Food or Exercise name */}
             <div className="flex flex-col gap-1">
               <label className="text-[10px] text-slate-500 font-semibold">

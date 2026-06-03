@@ -130,6 +130,36 @@ export default function WellnessDashboard({
   // Inline PaoPao Coach consultation state
   const [inlineQuery, setInlineQuery] = useState("");
 
+  // Back-logging date states & helpers (Timezone-safe)
+  const getLocalTodayString = () => {
+    const d = new Date();
+    const offset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - offset).toISOString().split('T')[0];
+  };
+
+  const [logDate, setLogDate] = useState<string>(getLocalTodayString());
+  const [weightLogDate, setWeightLogDate] = useState<string>(getLocalTodayString());
+
+  const getRecordTimestamp = () => {
+    const todayStr = getLocalTodayString();
+    if (logDate === todayStr) {
+      return new Date().toISOString();
+    }
+    const now = new Date();
+    const [year, month, day] = logDate.split('-').map(Number);
+    return new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds()).toISOString();
+  };
+
+  const getWeightTimestamp = () => {
+    const todayStr = getLocalTodayString();
+    if (weightLogDate === todayStr) {
+      return new Date().toISOString();
+    }
+    const now = new Date();
+    const [year, month, day] = weightLogDate.split('-').map(Number);
+    return new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds()).toISOString();
+  };
+
   // Reset inline query whenever tab changes
   useEffect(() => {
     setInlineQuery("");
@@ -170,7 +200,7 @@ export default function WellnessDashboard({
   const handleQuickWater = () => {
     const freshRecord: WellnessRecord = {
       id: `r-water-${Date.now()}`,
-      timestamp: new Date().toISOString(),
+      timestamp: getRecordTimestamp(),
       type: "water",
       title: "補充溫開水 🥛",
       estimatedValue: 250,
@@ -186,7 +216,7 @@ export default function WellnessDashboard({
     if (!mlValue || mlValue <= 0) return;
     const freshRecord: WellnessRecord = {
       id: `r-water-${Date.now()}`,
-      timestamp: new Date().toISOString(),
+      timestamp: getRecordTimestamp(),
       type: "water",
       title: `手動補開水 ${mlValue} 毫升 🥛`,
       estimatedValue: mlValue,
@@ -206,7 +236,7 @@ export default function WellnessDashboard({
     
     const freshRecord: WellnessRecord = {
       id: `r-weight-${Date.now()}`,
-      timestamp: new Date().toISOString(),
+      timestamp: getWeightTimestamp(),
       type: "weight",
       title: `誠實體格記錄：體重 ${wVal} kg ${fVal ? `• 體脂率 ${fVal}%` : ""}`,
       estimatedValue: wVal,
@@ -428,7 +458,7 @@ export default function WellnessDashboard({
       
       freshRecord = {
         id: `r-diet-${Date.now()}`,
-        timestamp: new Date().toISOString(),
+        timestamp: getRecordTimestamp(),
         type: "diet",
         title,
         estimatedValue: kcal,
@@ -454,7 +484,7 @@ export default function WellnessDashboard({
 
       freshRecord = {
         id: `r-exe-${Date.now()}`,
-        timestamp: new Date().toISOString(),
+        timestamp: getRecordTimestamp(),
         type: "exercise",
         title,
         estimatedValue: minutes,
@@ -470,7 +500,7 @@ export default function WellnessDashboard({
     } else if (activeTab === "sleep") {
       freshRecord = {
         id: `r-sleep-${Date.now()}`,
-        timestamp: new Date().toISOString(),
+        timestamp: getRecordTimestamp(),
         type: "sleep",
         title: `沉浸舒眠 ${sleepHours} 小時 🛌`,
         estimatedValue: sleepHours,
@@ -483,7 +513,7 @@ export default function WellnessDashboard({
       const { label, emoji } = getMoodEmoji(moodScore);
       freshRecord = {
         id: `r-mood-${Date.now()}`,
-        timestamp: new Date().toISOString(),
+        timestamp: getRecordTimestamp(),
         type: "mood",
         title: `心情印記：${emoji} ${label}`,
         pointsEarned: 15,
@@ -504,7 +534,7 @@ export default function WellnessDashboard({
   const logQuickAction = (type: 'diet' | 'exercise', title: string, val: number, coachMessage: string) => {
     const freshRecord: WellnessRecord = {
       id: `r-quick-${Date.now()}`,
-      timestamp: new Date().toISOString(),
+      timestamp: getRecordTimestamp(),
       type,
       title,
       estimatedValue: val,
@@ -736,6 +766,20 @@ export default function WellnessDashboard({
         {/* Dynamic Inner Panel for Content Actions (Saves tremendous space) */}
         <div id="dynamic-log-panel" className="bg-brand-cream/25 border border-brand-sand rounded-2xl p-4.5 flex flex-col gap-4 shadow-4xs">
           
+          {/* 紀錄日期選擇器 (統一控制此面板內的補登記) */}
+          <div className="flex items-center justify-between border-b border-brand-sand/30 pb-2.5 mb-1 gap-2">
+            <span className="text-[10px] font-sans font-bold text-brand-muted flex items-center gap-1.5">
+              📅 紀錄日期 (可在此補登記歷程)：
+            </span>
+            <input
+              type="date"
+              value={logDate}
+              onChange={(e) => setLogDate(e.target.value || getLocalTodayString())}
+              max={getLocalTodayString()}
+              className="px-2 py-0.5 bg-white border border-brand-border rounded-lg font-sans text-[10.5px] text-[#5C564A] focus:outline-hidden focus:ring-1 focus:ring-brand-green/30"
+            />
+          </div>
+
           {/* A. DIET ACTIVE TAB */}
           {activeTab === 'diet' && (
             <div className="flex flex-col gap-4.5 animate-fade-in">
@@ -903,7 +947,7 @@ export default function WellnessDashboard({
                         onClick={() => {
                           const freshRecord: WellnessRecord = {
                             id: `r-water-${Date.now()}`,
-                            timestamp: new Date().toISOString(),
+                            timestamp: getRecordTimestamp(),
                             type: "water",
                             title: "灌入一大公升保温杯 500ml 💧",
                             estimatedValue: 500,
@@ -1078,7 +1122,7 @@ export default function WellnessDashboard({
                   onClick={() => {
                     const freshRecord: WellnessRecord = {
                       id: `r-sleep-${Date.now()}`,
-                      timestamp: new Date().toISOString(),
+                      timestamp: getRecordTimestamp(),
                       type: "sleep",
                       title: `沉浸舒眠 ${sleepHours} 小時 🛌`,
                       estimatedValue: sleepHours,
@@ -1141,7 +1185,7 @@ export default function WellnessDashboard({
                       const { label, emoji } = getMoodEmoji(moodScore);
                       const freshRecord: WellnessRecord = {
                         id: `r-mood-${Date.now()}`,
-                        timestamp: new Date().toISOString(),
+                        timestamp: getRecordTimestamp(),
                         type: "mood",
                         title: `心情印記：${emoji} ${label}`,
                         pointsEarned: 15,
@@ -1348,6 +1392,19 @@ export default function WellnessDashboard({
 
             {/* Dialog Form */}
             <form onSubmit={handleLogSubmit} className="flex flex-col gap-4">
+              {/* 紀錄日期選擇器 */}
+              <div className="flex items-center justify-between bg-brand-cream/65 border border-brand-border p-3 rounded-2xl gap-2">
+                <span className="text-[10px] font-sans font-bold text-brand-muted flex items-center gap-1.5">
+                  📅 紀錄日期 (可在此補登記歷程)：
+                </span>
+                <input
+                  type="date"
+                  value={logDate}
+                  onChange={(e) => setLogDate(e.target.value || getLocalTodayString())}
+                  max={getLocalTodayString()}
+                  className="px-2 py-1 bg-white border border-brand-border rounded-xl font-sans text-xs text-brand-text focus:outline-hidden focus:ring-1 focus:ring-brand-green/30"
+                />
+              </div>
               {activeTab === "diet" && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="flex flex-col gap-1.5">
@@ -2179,7 +2236,7 @@ export default function WellnessDashboard({
                   <form onSubmit={handleWeightSubmit} className="bg-brand-cream border border-brand-border p-3.5 rounded-2xl flex flex-col gap-2 shadow-4xs">
                     <span className="text-[10px] font-extrabold text-[#5C564A] block">⚖️ 補充登錄今日體格數據</span>
                     
-                    <div className="grid grid-cols-2 gap-2.5 mt-1">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-1">
                       <div className="flex flex-col gap-1">
                         <span className="text-[9px] font-bold text-brand-muted uppercase font-sans">體重 (公斤)：</span>
                         <input
@@ -2201,6 +2258,16 @@ export default function WellnessDashboard({
                           value={bodyFatInput}
                           onChange={(e) => setBodyFatInput(e.target.value ? Number(e.target.value) : "")}
                           placeholder="例如：21.5"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[9px] font-bold text-brand-muted uppercase font-sans">量測日期：</span>
+                        <input
+                          type="date"
+                          className="w-full px-3 py-1.5 bg-white border border-brand-border rounded-xl font-sans text-xs text-brand-text focus:outline-hidden focus:ring-1 focus:ring-brand-green/30"
+                          value={weightLogDate}
+                          onChange={(e) => setWeightLogDate(e.target.value || getLocalTodayString())}
+                          max={getLocalTodayString()}
                         />
                       </div>
                     </div>
